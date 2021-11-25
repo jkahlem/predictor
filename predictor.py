@@ -1,15 +1,16 @@
 import socket
 import logging
 import errno
-import shutil
 import os
 import threading
 from enum import Enum
 from io import StringIO
+from languageGenerationModel import LanguageGenerationModel
 
 from messages import Message, parse_message_from_fd
-from config import get_labels_path, get_port, get_script_dir, is_cuda_available, is_test_mode, load_config
-from model import Model
+from config import get_port, get_script_dir, is_cuda_available, is_test_mode, load_config
+from model import ModelHolder
+from returnTypesPredictionModel import ReturnTypesPredictionModel
 
 class JsonRpcErrorCodes(Enum):
     ParseError = -32700
@@ -57,12 +58,10 @@ class ConnectionHandler:
 
     # Handles a train message which trains a new model
     def __handle_train_message(self, msg: dict) -> None:
-        global labels_path
         labels, training_set, evaluation_set = StringIO(msg['params']['labels']), StringIO(msg['params']['trainingSet']), StringIO(msg['params']['evaluationSet'])
-        copyTo(labels, get_labels_path())
 
-        model = get_model()
-        model.load_labels(labels)
+        model = get_model("ReturnTypesPredictor")
+        model.load_additional(labels)
         model.create_new_model()
         model.train_model(training_set)
 
@@ -81,7 +80,7 @@ class ConnectionHandler:
     # Handles a predict message which makes predictions to the given method names
     def __handle_predict_message(self, msg: dict) -> None:
         words = msg['params']['methodsToPredict']
-        model = get_model()
+        model = get_model("ReturnTypesPredictor")
         model.load_model()
 
         prediction = model.predict(words)
@@ -89,12 +88,8 @@ class ConnectionHandler:
             self.__send_error_msg("Internal error")
             print("Only " + str(len(prediction)) + " predicted, expected to predict " + str(len(words)) + " types")
             return
-        
-        predicted_types = list()
-        for p in prediction:
-            predicted_types.append(get_model().get_type_by_label(p))
 
-        self.__send_predictions_msg(msg['id'], predicted_types)
+        self.__send_predictions_msg(msg['id'], prediction)
 
     # Sends predictions to method names in response to a predict message
     def __send_predictions_msg(self, id, predicted_types: list) -> None:
@@ -115,22 +110,6 @@ class ConnectionHandler:
     # Sends a plain string to the connection
     def __send_str_to_conn(self, str: str) -> None:
         self.connection.sendall((str).encode("utf-8"))
-
-
-# Copies the content of a string (wrapped in StringIO) to the target path
-def copyTo(strio: StringIO, target_path) -> None:
-    if is_test_mode():
-        # do nothing in test mode
-        return
-
-    containing_dir = os.path.dirname(target_path)
-    if not os.path.exists(containing_dir):
-        os.makedirs(containing_dir)
-
-    with open(target_path, 'w') as fd:
-        strio.seek(0)
-        shutil.copyfileobj(strio, fd)
-        strio.seek(0)
 
 
 # Creates a connection handler for the connection
@@ -160,22 +139,27 @@ def start_server():
 
 
 # Gets the prediction model (global singleton) currently in use
-def get_model() -> Model:
-    global prediction_model, prediction_model_lock
+def get_model(target: str) -> ModelHolder:
+    global prediction_models, prediction_model_lock
     prediction_model_lock.acquire()
-    if prediction_model is None:
-        prediction_model = Model()
+    if not target in prediction_models:
+        if target == "ReturnTypesPredictor":
+            prediction_models[target] = ModelHolder(ReturnTypesPredictionModel())
+        elif target == "LanguageGenerationModel":
+            prediction_models[target] = ModelHolder(LanguageGenerationModel())
+        else:
+            raise Exception("Unsupported target model: " + target)
     prediction_model_lock.release()
-    return prediction_model
+    return prediction_models
 
 
 # Startup script for the server
 if __name__ == '__main__':
     os.chdir(get_script_dir())
-    global prediction_model, prediction_model_lock
+    global prediction_models, prediction_model_lock
 
     prediction_model_lock = threading.Lock()
-    prediction_model = None
+    prediction_models = dict()
 
     load_config()
     if not is_cuda_available():

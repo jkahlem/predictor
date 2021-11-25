@@ -1,14 +1,11 @@
 from enum import Enum
 import os
-from random import randint
 import shutil
 import threading
 
 import pandas as pd
-from simpletransformers.classification import ClassificationModel, ClassificationArgs
-from sklearn.metrics import f1_score, accuracy_score
 
-from config import get_labels_path, get_model_config, get_script_dir, is_cuda_available, is_test_mode
+from config import get_script_dir, is_test_mode
 
 class ModelState(Enum):
     NONE = 1
@@ -17,27 +14,50 @@ class ModelState(Enum):
 # Wraps the classification model functionality and is thread safe
 class Model:
     def __init__(self):
+        pass
+
+    # initializes a new model
+    def init_new_model(self) -> None:
+        pass
+
+    # Loads an already created/trained classification model
+    def load_model(self) -> None:
+        pass
+
+    # Trains the model using the given training set
+    def train_model(self, training_set) -> None:
+        pass
+
+    # Evaluates the model using the given evaluation set
+    def eval_model(self, evaluation_set) -> dict:
+        pass
+
+    # Loads additional, model relevant data
+    def load_additional(self, additional_data) -> None:
+        pass
+
+    # Makes predictions
+    def predict(self, predictionData) -> list:
+        pass
+
+    # path addition for the cacheDir
+    def cacheDirName(self) -> str:
+        pass
+
+    # path addition for the outputs dir 
+    def outputsDirName(self) -> str:
+        pass
+
+class ModelHolder():
+    def __init__(self, model: Model):
         self.model_state = ModelState.NONE
-        self.model = None
-        self.labels = None
+        self.model = model
         self.mutex = threading.Lock()
         self.prediction_cache = dict()
 
     # returns true if the model is starting
     def is_starting(self) -> bool:
         return self.model_state != ModelState.NONE
-
-    # prints a message if cuda is used or not
-    def __print_model_initialization(self) -> None:
-        if is_cuda_available():
-            print('Initialize model with ' + str(self.labels.index.size) + ' label types and using CUDA')
-        else:
-            print('Initialize model with ' + str(self.labels.index.size) + ' label types without CUDA')
-
-    # the arguments to use in this model
-    def __args(self) -> ClassificationArgs:
-        args = ClassificationArgs()
-        return args
 
     # Creates a new classification model using the loaded labels (if labels are loaded, otherwise nothing happens)
     def create_new_model(self) -> None:
@@ -57,8 +77,8 @@ class Model:
 
     # removes the model files used by a previously trained model    
     def __remove_previous_model_files(self) -> None:
-        self.__remove_dir_if_exists(os.path.join(get_script_dir(), 'outputs'))
-        self.__remove_dir_if_exists(os.path.join(get_script_dir(), 'cache_dir'))
+        self.__remove_dir_if_exists(os.path.join(get_script_dir(), self.model.outputsDirName()))
+        self.__remove_dir_if_exists(os.path.join(get_script_dir(), self.model.cacheDirName()))
 
     # removes a directory failsafe
     def __remove_dir_if_exists(self, path: str) -> None:
@@ -71,14 +91,12 @@ class Model:
         except Exception:
             pass
     
-    # initializes a new classification model
+    # initializes a new model
     def __init_new_model(self) -> None:
-        self.__print_model_initialization()
-        used_model_type, used_model = get_model_config()
-        self.model = ClassificationModel(used_model_type, used_model, num_labels=self.labels.index.size, use_cuda=is_cuda_available(), args=self.__args())
+        self.model.init_new_model()
         self.model_state = ModelState.INITIALIZED
 
-    # Loads an already created/trained classification model
+    # Loads an already created/trained model
     def load_model(self) -> None:
         if is_test_mode():
             # Do nothing in test mode
@@ -89,35 +107,10 @@ class Model:
             self.mutex.release()
             return
 
-        self.__load_labels(get_labels_path())
-        if not self.labels is None:
-            self.__load_model()
-    
-        self.mutex.release() 
-    
-    # loads a previously trained model
-    def __load_model(self) -> None:
-        self.__print_model_initialization()
-        used_model_type, _ = get_model_config()
-        self.model = ClassificationModel(used_model_type, 'outputs', num_labels=self.labels.index.size, use_cuda=is_cuda_available(), args=self.__args())
+        self.model.__load_model()
         self.model_state = ModelState.INITIALIZED
     
-    # loads the labels from a csv file
-    def load_labels(self, filepath_or_buffer) -> None:
-        if is_test_mode():
-            # Do nothing in test mode
-            return
-        self.mutex.acquire()
-
-        self.__load_labels(filepath_or_buffer)
-
         self.mutex.release()
-
-    # loads labels from a csv file
-    def __load_labels(self, filepath_or_buffer) -> None:
-        if self.is_starting():
-            return
-        self.labels = pd.read_csv(filepath_or_buffer, header=None, sep=';', na_filter=False)
 
     # Trains the model using the given training set
     def train_model(self, training_set) -> None:
@@ -150,21 +143,28 @@ class Model:
         if not isinstance(evaluation_set, pd.DataFrame):
             evaluation_set = pd.read_csv(evaluation_set, header=None, sep=';', na_filter=False)
 
-        def f1_multiclass(l, preds):
-            return f1_score(l, preds, average='micro')
-        result, _, _ = self.model.eval_model(evaluation_set, f1=f1_multiclass, acc=accuracy_score)
+        result = self.model.eval_model(evaluation_set)
 
         self.mutex.release()
         return result
 
-    # Makes predictions for the expected return type of each of the given method names (uses cached values if exist)
-    def predict(self, method_names: list) -> list:
+    # Evaluates the model using the given evaluation set
+    def load_additional(self, additional_data) -> None:
         if is_test_mode():
-            # In test mode, return a list of random values
-            types = list()
-            for m in method_names:
-                types.append(randint(0, 1))
-            return types
+            return
+        self.mutex.acquire()
+
+        if self.model is None:
+            self.mutex.release()
+            return
+
+        self.model.load_additional(additional_data)
+
+        self.mutex.release()
+
+        
+    # Makes predictions
+    def predict(self, method_names: list) -> list:
         self.mutex.acquire()
 
         if self.model is None:
@@ -180,11 +180,11 @@ class Model:
 
         self.mutex.release()
         return result
-    
+
     # makes predictions and saves them in the prediction cache
     def __predict_and_save_in_cache(self, method_names: list):
         if len(method_names) > 0:
-            predictions, _ = self.model.predict(method_names)
+            predictions = self.model.predict(method_names)
             for i in range(len(predictions)):
                 self.prediction_cache[method_names[i]] = predictions[i]
 
@@ -195,17 +195,3 @@ class Model:
             if not m in self.prediction_cache:
                 unpredicted.append(m)
         return unpredicted
-
-    # returns the type name for the given label
-    def get_type_by_label(self, label: int) -> str:
-        if is_test_mode():
-            # In test mode, return predefined values
-            if label == 0:
-                return "object"
-            return "void"
-
-        if self.labels is None:
-            return ""
-
-        row_for_label = self.labels.loc[self.labels.iloc[:, 1] == label]
-        return str(row_for_label.iloc[0, 0])
