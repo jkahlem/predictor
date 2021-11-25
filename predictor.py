@@ -12,6 +12,10 @@ from config import get_port, get_script_dir, is_cuda_available, load_config
 from model import ModelHolder
 from returnTypesPredictionModel import ReturnTypesPredictionModel
 
+class SupportedModels(str, Enum):
+    ReturnTypesPrediction = "ReturnTypesPrediction"
+    MethodGenerator = "MethodGenerator"
+
 class JsonRpcErrorCodes(Enum):
     ParseError = -32700
     InvalidRequest = -32600
@@ -58,10 +62,10 @@ class ConnectionHandler:
 
     # Handles a train message which trains a new model
     def __handle_train_message(self, msg: dict) -> None:
-        labels, training_set, evaluation_set = StringIO(msg['params']['labels']), StringIO(msg['params']['trainingSet']), StringIO(msg['params']['evaluationSet'])
+        additional, training_set, evaluation_set = StringIO(msg['params']['additional']), StringIO(msg['params']['trainingSet']), StringIO(msg['params']['evaluationSet'])
 
-        model = get_model("ReturnTypesPredictor")
-        model.load_additional(labels)
+        model = get_model(SupportedModels(msg['params']['targetModel']))
+        model.load_additional(additional)
         model.create_new_model()
         model.train_model(training_set)
 
@@ -79,8 +83,8 @@ class ConnectionHandler:
     
     # Handles a predict message which makes predictions to the given method names
     def __handle_predict_message(self, msg: dict) -> None:
-        words = msg['params']['methodsToPredict']
-        model = get_model("ReturnTypesPredictor")
+        words = msg['params']['predictionData']
+        model = get_model(SupportedModels(msg['params']['targetModel']))
         model.load_model()
 
         prediction = model.predict(words)
@@ -139,13 +143,13 @@ def start_server():
 
 
 # Gets the prediction model (global singleton) currently in use
-def get_model(target: str) -> ModelHolder:
+def get_model(target: SupportedModels) -> ModelHolder:
     global prediction_models, prediction_model_lock
     prediction_model_lock.acquire()
     if not target in prediction_models:
-        if target == "ReturnTypesPredictor":
+        if target == SupportedModels.ReturnTypesPrediction:
             prediction_models[target] = ModelHolder(ReturnTypesPredictionModel())
-        elif target == "LanguageGenerationModel":
+        elif target == SupportedModels.MethodGenerator:
             prediction_models[target] = ModelHolder(LanguageGenerationModel())
         else:
             prediction_model_lock.release()
