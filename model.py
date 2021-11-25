@@ -66,7 +66,7 @@ class ModelHolder():
             return
         self.mutex.acquire()
 
-        if self.is_starting() or self.labels is None:
+        if self.is_starting():
             self.mutex.release()
             return
 

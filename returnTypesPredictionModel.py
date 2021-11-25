@@ -27,22 +27,17 @@ class ReturnTypesPredictionModel(model.Model):
     
     # initializes a new classification model
     def init_new_model(self) -> None:
-        self.mutex.acquire()
         if self.labels is None:
-            self.mutex.release()
             return
         self.__print_model_initialization()
         used_model_type, used_model = get_model_config()
         self.model = ClassificationModel(used_model_type, used_model, num_labels=self.labels.index.size, use_cuda=is_cuda_available(), args=self.__args())
-        self.mutex.release()
 
     # Loads an already created/trained classification model
     def load_model(self) -> None:
-        self.mutex.acquire()
         self.__load_labels(get_labels_path())
         if not self.labels is None:
             self.__load_model()
-        self.mutex.release()
     
     # loads a previously trained model
     def __load_model(self) -> None:
@@ -50,19 +45,13 @@ class ReturnTypesPredictionModel(model.Model):
         used_model_type, _ = get_model_config()
         self.model = ClassificationModel(used_model_type, 'outputs', num_labels=self.labels.index.size, use_cuda=is_cuda_available(), args=self.__args())
 
-    # Loads additional, model relevant data
-    def load_additional(self, additional_data) -> None:
-        self.load_labels(additional_data)
-
-    # loads labels from a csv file
-    def load_labels(self, filepath_or_buffer) -> None:
-        self.mutex.acquire()
-        self.__copyTo(filepath_or_buffer, get_labels_path())
-        self.labels = pd.read_csv(filepath_or_buffer, header=None, sep=';', na_filter=False)
-        self.mutex.release()
+    # Loads labels
+    def load_additional(self, labels) -> None:
+        self.__copyTo(labels, get_labels_path())
+        self.__load_labels(labels)
     
     # Copies the content of a string (wrapped in StringIO) to the target path
-    def __copyTo(strio: StringIO, target_path) -> None:
+    def __copyTo(self, strio: StringIO, target_path) -> None:
         if is_test_mode():
             # do nothing in test mode
             return

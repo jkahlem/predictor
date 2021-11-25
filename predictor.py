@@ -8,7 +8,7 @@ from io import StringIO
 from languageGenerationModel import LanguageGenerationModel
 
 from messages import Message, parse_message_from_fd
-from config import get_port, get_script_dir, is_cuda_available, is_test_mode, load_config
+from config import get_port, get_script_dir, is_cuda_available, load_config
 from model import ModelHolder
 from returnTypesPredictionModel import ReturnTypesPredictionModel
 
@@ -148,9 +148,10 @@ def get_model(target: str) -> ModelHolder:
         elif target == "LanguageGenerationModel":
             prediction_models[target] = ModelHolder(LanguageGenerationModel())
         else:
+            prediction_model_lock.release()
             raise Exception("Unsupported target model: " + target)
     prediction_model_lock.release()
-    return prediction_models
+    return prediction_models[target]
 
 
 # Startup script for the server
