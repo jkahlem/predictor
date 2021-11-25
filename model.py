@@ -48,6 +48,10 @@ class Model:
     def outputsDirName(self) -> str:
         pass
 
+    # formats input data to the desired format
+    def dataFormatter(self, data):
+        return data
+
 class ModelHolder():
     def __init__(self, model: Model):
         self.model_state = ModelState.NONE
@@ -123,9 +127,7 @@ class ModelHolder():
             self.mutex.release()
             return
 
-        if not isinstance(training_set, pd.DataFrame):
-            training_set = pd.read_csv(training_set, header=None, sep=';', na_filter=False)
-        self.model.train_model(training_set)
+        self.model.train_model(self.model.dataFormatter(training_set))
 
         self.mutex.release()
 
@@ -139,11 +141,8 @@ class ModelHolder():
         if self.model is None:
             self.mutex.release()
             return
-    
-        if not isinstance(evaluation_set, pd.DataFrame):
-            evaluation_set = pd.read_csv(evaluation_set, header=None, sep=';', na_filter=False)
 
-        result = self.model.eval_model(evaluation_set)
+        result = self.model.eval_model(self.model.dataFormatter(evaluation_set))
 
         self.mutex.release()
         return result

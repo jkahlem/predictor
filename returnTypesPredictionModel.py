@@ -22,8 +22,7 @@ class ReturnTypesPredictionModel(model.Model):
 
     # the arguments to use in this model
     def __args(self) -> ClassificationArgs:
-        args = ClassificationArgs()
-        return args
+        return ClassificationArgs(cache_dir=self.cacheDirName(), output_dir=self.outputsDirName())
     
     # initializes a new classification model
     def init_new_model(self) -> None:
@@ -121,8 +120,14 @@ class ReturnTypesPredictionModel(model.Model):
     
     # outputs directory name
     def outputsDirName(self) -> str:
-        return 'outputs'
+        return 'outputs/'
 
     # cache directory name
     def cacheDirName(self) -> str:
-        return 'cache_dir'
+        return 'cache_dir/'
+
+    # formats data into a csv dataframe    
+    def dataFormatter(self, data):
+        if not isinstance(data, pd.DataFrame):
+            return pd.read_csv(data, header=None, sep=';', na_filter=False)
+        return data
