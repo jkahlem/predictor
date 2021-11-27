@@ -111,7 +111,7 @@ class ModelHolder():
             self.mutex.release()
             return
 
-        self.model.__load_model()
+        self.model.load_model()
         self.model_state = ModelState.INITIALIZED
     
         self.mutex.release()

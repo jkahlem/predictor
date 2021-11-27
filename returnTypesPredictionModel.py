@@ -1,9 +1,7 @@
-import os
-import shutil
 import model
 import pandas as pd
+from util import copyTo
 from random import randint
-from io import StringIO
 from config import get_labels_path, get_model_config, is_cuda_available, is_test_mode
 from simpletransformers.classification import ClassificationModel, ClassificationArgs
 from sklearn.metrics import f1_score, accuracy_score
@@ -46,23 +44,9 @@ class ReturnTypesPredictionModel(model.Model):
 
     # Loads labels
     def load_additional(self, labels) -> None:
-        self.__copyTo(labels, get_labels_path())
+        if not is_test_mode():
+            copyTo(labels, get_labels_path())
         self.__load_labels(labels)
-    
-    # Copies the content of a string (wrapped in StringIO) to the target path
-    def __copyTo(self, strio: StringIO, target_path) -> None:
-        if is_test_mode():
-            # do nothing in test mode
-            return
-
-        containing_dir = os.path.dirname(target_path)
-        if not os.path.exists(containing_dir):
-            os.makedirs(containing_dir)
-
-        with open(target_path, 'w') as fd:
-            strio.seek(0)
-            shutil.copyfileobj(strio, fd)
-            strio.seek(0)
 
     # loads labels from a csv file
     def __load_labels(self, filepath_or_buffer) -> None:

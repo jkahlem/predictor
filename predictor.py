@@ -5,7 +5,7 @@ import os
 import threading
 from enum import Enum
 from io import StringIO
-from languageGenerationModel import LanguageGenerationModel
+from languageGenerationModel import MethodGenerationModel
 
 from messages import Message, parse_message_from_fd
 from config import get_port, get_script_dir, is_cuda_available, load_config
@@ -75,7 +75,16 @@ class ConnectionHandler:
     
     # Sends an evaluation object as response to a train message
     def __send_evaluation_msg(self, id, result: dict) -> None:
-        eval = dict(accScore=result["acc"], evalLoss=result['eval_loss'], f1Score=result['f1'], mcc=result['mcc'])
+        eval = dict(accScore=None, evalLoss=None, f1Score=None, mcc=None)
+        if "acc" in result:
+            eval["accScore"] = result["acc"]
+        if "eval_loss" in result:
+            eval["evalLoss"] = result["eval_loss"]
+        if "f1" in result:
+            eval["f1Score"] = result["f1"]
+        if "mcc" in result:
+            eval["mcc"] = result['mcc']
+        print(result)
         
         msg = self.__create_jsonrpc_response(id, eval)
         
@@ -150,13 +159,12 @@ def get_model(target: SupportedModels) -> ModelHolder:
         if target == SupportedModels.ReturnTypesPrediction:
             prediction_models[target] = ModelHolder(ReturnTypesPredictionModel())
         elif target == SupportedModels.MethodGenerator:
-            prediction_models[target] = ModelHolder(LanguageGenerationModel())
+            prediction_models[target] = ModelHolder(MethodGenerationModel())
         else:
             prediction_model_lock.release()
             raise Exception("Unsupported target model: " + target)
     prediction_model_lock.release()
     return prediction_models[target]
-
 
 # Startup script for the server
 if __name__ == '__main__':

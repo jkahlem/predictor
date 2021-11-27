@@ -17,6 +17,10 @@ def get_script_dir() -> str:
 def get_labels_path() -> str:
     return os.path.join(get_script_dir(), 'resources', 'data', 'labels.csv')
 
+# the directory where resources should be stored
+def get_resource_path(resource_file_name: str) -> str:
+    return os.path.join(get_script_dir(), 'resources', 'data', resource_file_name)
+
 # the model type and model name to use
 def get_model_config() -> Tuple[str, str]:
     return 'bert', 'bert-base-uncased'

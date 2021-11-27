@@ -1,13 +1,13 @@
-import os
-import shutil
 import model
-import pandas as pd
-from random import randint
-from io import StringIO
-from config import get_labels_path, get_model_config, is_cuda_available, is_test_mode
+from util import copyTo
+from uuid import uuid4
+from config import get_model_config, get_resource_path, is_cuda_available
 from simpletransformers.language_modeling import LanguageModelingModel, LanguageModelingArgs
 from simpletransformers.language_generation import LanguageGenerationModel, LanguageGenerationArgs
-from sklearn.metrics import f1_score, accuracy_score
+
+# TODO: rework model loading... (method generation needs two models - language modeling model and generator, but model holder supports only one model)
+#       -> the underlying model should do the needed stuff. However, the model holder should call the loading/initializing methods instead of the message script.
+#       -> maybe rename to "initialize/load for training" and "initialize/load for prediction"...
 
 class MethodGenerationModel(model.Model):
     def __init__(self):
@@ -22,7 +22,7 @@ class MethodGenerationModel(model.Model):
             print('Initialize language modelling model without CUDA')
     
     def __languageModelingArgs(self) -> LanguageModelingArgs:
-        return LanguageModelingArgs(cache_dir=self.cacheDirName(), output_dir=self.outputsDirName())
+        return LanguageModelingArgs(cache_dir=self.cacheDirName(), output_dir=self.outputsDirName(), mlm=False)
 
     def __languageGenerationArgs(self) -> LanguageGenerationArgs:
         return LanguageGenerationArgs(cache_dir=self.cacheDirName(), output_dir=self.outputsDirName())
@@ -53,7 +53,10 @@ class MethodGenerationModel(model.Model):
     def predict(self, predictionData: list) -> list:
         output = list()
         for methodName in predictionData:
-            output.append(self.languageGenerator.generate(methodName))
+            print("Generate for '"  + methodName + "'")
+            generated = self.languageGenerator.generate(methodName)[0]
+            print(generated)
+            output.append(generated)
         return output
 
     # path addition for the cacheDir
@@ -64,8 +67,9 @@ class MethodGenerationModel(model.Model):
     def outputsDirName(self) -> str:
         return 'outputs/'
 
-    # formats input data into a list
-    def dataFormatter(self, data) -> list:
-        if not isinstance(data, list):
-            return data.split("\n")
-        return data
+    # formats input data
+    def dataFormatter(self, data):
+        filename = 'lmd_' + str(uuid4())
+        filepath = get_resource_path(filename)
+        copyTo(data, filepath)
+        return filepath
