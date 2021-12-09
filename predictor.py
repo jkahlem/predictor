@@ -16,7 +16,7 @@ class SupportedModels(str, Enum):
     ReturnTypesPrediction = "ReturnTypesPrediction"
     MethodGenerator = "MethodGenerator"
 
-class JsonRpcErrorCodes(Enum):
+class JsonRpcErrorCodes(str, Enum):
     ParseError = -32700
     InvalidRequest = -32600
     MethodNotFound = -32602
