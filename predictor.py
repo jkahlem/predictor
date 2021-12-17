@@ -11,6 +11,7 @@ from messages import Message, parse_message_from_fd
 from config import get_port, get_script_dir, is_cuda_available, load_config
 from model import ModelHolder
 from returnTypesPredictionModel import ReturnTypesPredictionModel
+from sentenceTransformer import testSentenceTransformer
 
 class SupportedModels(str, Enum):
     ReturnTypesPrediction = "ReturnTypesPrediction"

@@ -70,11 +70,11 @@ class MethodGenerationModel(model.Model):
 
     # Trains the model using the given training set
     def train_model(self, training_set: str) -> None:
-        trainDf = pd.read_csv(training_set, header=None, names=['prefix', 'input_text', 'target_text'], sep=';', na_filter=False)
+        #trainDf = pd.read_csv(training_set, header=None, names=['prefix', 'input_text', 'target_text'], sep=';', na_filter=False)
         args = T5Args()
         args.num_train_epochs = 3
         model = T5Model('t5', 't5-small', args=args, use_cuda=True)
-        model.train_model(trainDf)
+        model.train_model(training_set)
         
 
     # Evaluates the model using the given evaluation set
@@ -91,7 +91,7 @@ class MethodGenerationModel(model.Model):
         model = T5Model('t5', 'outputs')
         inputs = list()
         for methodName in predictionData:
-            inputs.append("generate parameters: " + methodName)
+            inputs.append("type assignment: " + methodName)
         outputs = model.predict(inputs)
         print(outputs)
         return outputs
@@ -109,3 +109,16 @@ class MethodGenerationModel(model.Model):
         if not isinstance(data, pd.DataFrame):
             return pd.read_csv(data, header=None, names=['prefix', 'input_text', 'target_text'], sep=';', na_filter=False)
         return data
+
+## Type assignment task
+# prefix: "type assignment"
+# input_text: "name: <parameter name> context: <types in context>"
+# target_text: "<expected parameter type>" OR "0" 
+#   - "0" if type is not available in context. As its a number, it is not allowed as a type in Java and therefore can be used without collision.
+#
+## Type classification task
+#
+# prefix: "type classification"
+# input_text: "<parameter name>"
+
+# TODO: Create resource directory if not existing ... if this is still needed ...
