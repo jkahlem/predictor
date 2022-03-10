@@ -82,6 +82,18 @@ def __parse_header(fd) -> MessageHeader:
 
     return MessageHeader(length, mediaType)
 
+
+class Options:
+    def __init__(self, options: dict):
+        self.targetModel = SupportedModels(options['targetModel'])
+        self.labels = StringIO(options['labels'])
+
+    def __str__(self) -> str:
+        return "Options..."
+
+    def __repr__(self) -> str:
+        return "Options..."
+
 # defines a train message 
 class TrainMessage:
     def __init__(self, msg: dict):
@@ -99,8 +111,12 @@ class TrainMessage:
 
 # defines a train message 
 class NewTrainMessage:
+    training_data: list[Method]
+    options: Options
+    id: str
+
     def __init__(self, msg: dict):
-        self.training_data = [MethodContext(data) for data in msg['params']['trainData']]# Todo: convert to MethodContext?
+        self.training_data = [Method(data) for data in msg['params']['trainData']]
         self.options = Options(msg['params']['options'])
         self.id = msg['id']
 
@@ -112,7 +128,7 @@ class NewTrainMessage:
 
 class NewEvaluationMessage:
     def __init__(self, msg: dict):
-        self.training_data = [Method(data) for data in msg['params']['evaluationData']]# Todo: convert to MethodContext?
+        self.training_data = [Method(data) for data in msg['params']['evaluationData']]
         self.options = Options(msg['params']['options'])
         self.id = msg['id']
 
@@ -134,14 +150,3 @@ class NewPredictMessage:
 
     def __repr__(self) -> str:
         return "Predict message..."
-
-class Options:
-    def __init__(self, options: dict):
-        self.targetModel = SupportedModels(options['targetModel'])
-        self.labels = StringIO(options['additional'])
-
-    def __str__(self) -> str:
-        return "Options..."
-
-    def __repr__(self) -> str:
-        return "Options..."

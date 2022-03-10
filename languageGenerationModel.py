@@ -1,3 +1,4 @@
+from methods import Method, MethodContext, Parameter
 from simpletransformers.t5 import T5Model, T5Args
 from transformers.training_args import TrainingArguments
 import model
@@ -75,7 +76,6 @@ class MethodGenerationModel(model.Model):
         args.num_train_epochs = 3
         model = T5Model('t5', 't5-small', args=args, use_cuda=True)
         model.train_model(training_set)
-        
 
     # Evaluates the model using the given evaluation set
     def eval_model(self, evaluation_set: list) -> dict:
@@ -105,10 +105,49 @@ class MethodGenerationModel(model.Model):
         return 'outputs/'
 
     # formats input data
-    def dataFormatter(self, data):
-        if not isinstance(data, pd.DataFrame):
-            return pd.read_csv(data, header=None, names=['prefix', 'input_text', 'target_text'], sep=';', na_filter=False)
+    def dataFormatter(self, data: list[Method]):
+        #if not isinstance(data, pd.DataFrame):
+        #    return pd.read_csv(data, header=None, names=['prefix', 'input_text', 'target_text'], sep=';', na_filter=False)
+        frame = pandas.DataFrame(columns=['prefix', 'input_text', 'target_text'])
+        for method in data:
+            self.__addMethodToFrame(method, frame)
         return data
+    
+    def __addMethodToFrame(self, method: Method, frame: pandas.DataFrame):
+        self.__addGenerateParametersTask(method, frame)
+        self.__addGenerateReturnTypeTask(method, frame)
+        self.__addGenerateParameterTypeTask(method, frame)
+
+    def __addGenerateParametersTask(self, method: Method, frame: pandas.DataFrame):
+        static = ''
+        if method.context.isStatic:
+            static = 'static '
+        input = 'method: ' + static + method.context.methodName + ". class: " + method.context.className + '.'
+        self.__addTask('generate parameters', input, self.__parameterNames(method.values.parameters), frame)
+    
+    def __parameterNames(self, parameters: list[Parameter]) -> str:
+        output = ''
+        for par in parameters:
+            output += par.name
+        return output
+
+    def __addGenerateReturnTypeTask(self, method: Method, frame: pandas.DataFrame):
+        static = ''
+        if method.context.isStatic:
+            static = 'static '
+        input = 'method: ' + static + method.context.methodName + ". class: " + method.context.className + '.'
+        self.__addTask('generate returntype', input, method.values.returnType, frame)
+
+    def __addGenerateParameterTypeTask(self, method: Method, frame: pandas.DataFrame):
+        static = ''
+        if method.context.isStatic:
+            static = 'static '
+        for par in method.values.parameters:
+            input = 'method: ' + static + method.context.methodName + ". class: " + method.context.className + '. parameter: ' + par.name
+            self.__addTask('generate parametertype', input, par.type, frame)
+
+    def __addTask(self, prefix, input_text, target_text, frame: pandas.DataFrame):
+        frame.append(pd.Series({'prefix': prefix, 'input_text': input_text, 'target_text': target_text}))
 
 ## Type assignment task
 # prefix: "type assignment"

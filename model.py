@@ -6,6 +6,7 @@ import threading
 import pandas as pd
 
 from config import get_script_dir, is_test_mode
+from methods import Method, MethodContext
 
 class ModelState(Enum):
     NONE = 1
@@ -117,7 +118,7 @@ class ModelHolder():
         self.mutex.release()
 
     # Trains the model using the given training set
-    def train_model(self, training_set) -> None:
+    def train_model(self, training_set: list[MethodContext]) -> None:
         if is_test_mode():
             # Do nothing in test mode
             return

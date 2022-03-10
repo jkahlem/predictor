@@ -4,10 +4,9 @@ import errno
 import os
 import threading
 from enum import Enum
-from io import StringIO
 from languageGenerationModel import MethodGenerationModel
 
-from messages import Message, parse_message_from_fd, SupportedModels, TrainMessage
+from messages import Message, NewTrainMessage, parse_message_from_fd, SupportedModels, TrainMessage
 from config import get_port, get_script_dir, is_cuda_available, load_config
 from model import ModelHolder
 from returnTypesPredictionModel import ReturnTypesPredictionModel
@@ -58,11 +57,11 @@ class ConnectionHandler:
             self.__send_error_msg(JsonRpcErrorCodes.MethodNotFound, "Method not found: " +msg['method'])
 
     # Handles a train message which trains a new model
-    def __handle_train_message(self, msg: TrainMessage) -> None:
-        model = get_model(msg.targetModel)
-        model.load_additional(msg.additional)
+    def __handle_train_message(self, msg: NewTrainMessage) -> None:
+        model = get_model(msg.options.targetModel)
+        model.load_additional(msg.options.labels)
         model.create_new_model()
-        model.train_model(msg.training_set)
+        model.train_model(msg.training_data)
 
         result = model.eval_model(msg.evaluation_set)
 
