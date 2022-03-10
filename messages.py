@@ -1,4 +1,3 @@
-from io import StringIO
 import json
 
 from methods import Method, MethodContext
@@ -84,9 +83,13 @@ def __parse_header(fd) -> MessageHeader:
 
 
 class Options:
+    labels: str
+    targetModel: SupportedModels
+
     def __init__(self, options: dict):
         self.targetModel = SupportedModels(options['targetModel'])
-        self.labels = StringIO(options['labels'])
+        if 'labels' in options:
+            self.labels = options['labels']
 
     def __str__(self) -> str:
         return "Options..."
@@ -96,24 +99,8 @@ class Options:
 
 # defines a train message 
 class TrainMessage:
-    def __init__(self, msg: dict):
-        self.targetModel = SupportedModels(msg['params']['targetModel'])
-        self.additional = StringIO(msg['params']['additional'])
-        self.training_set = StringIO(msg['params']['trainingSet'])
-        self.evaluation_set = StringIO(msg['params']['evaluationSet'])
-        self.id = msg['id']
-
-    def __str__(self) -> str:
-        return "Train message..."
-
-    def __repr__(self) -> str:
-        return "Train message..."
-
-# defines a train message 
-class NewTrainMessage:
     training_data: list[Method]
     options: Options
-    id: str
 
     def __init__(self, msg: dict):
         self.training_data = [Method(data) for data in msg['params']['trainData']]
@@ -126,9 +113,12 @@ class NewTrainMessage:
     def __repr__(self) -> str:
         return "Train message..."
 
-class NewEvaluationMessage:
+class EvaluateMessage:
+    evaluation_data: list[Method]
+    options: Options
+
     def __init__(self, msg: dict):
-        self.training_data = [Method(data) for data in msg['params']['evaluationData']]
+        self.evaluation_data = [Method(data) for data in msg['params']['evaluationData']]
         self.options = Options(msg['params']['options'])
         self.id = msg['id']
 
@@ -139,9 +129,9 @@ class NewEvaluationMessage:
         return "Evaluation message..."
 
 
-class NewPredictMessage:
+class PredictMessage:
     def __init__(self, msg: dict):
-        self.training_data = [MethodContext(data) for data in msg['params']['predictData']]# Todo: convert to MethodContext?
+        self.prediction_data = [MethodContext(data) for data in msg['params']['predictionData']]# Todo: convert to MethodContext?
         self.options = Options(msg['params']['options'])
         self.id = msg['id']
 

@@ -1,3 +1,5 @@
+from messages import Options
+from methods import Method, MethodContext
 import model
 import pandas as pd
 from util import copyTo
@@ -5,6 +7,7 @@ from random import randint
 from config import get_labels_path, get_model_config, is_cuda_available, is_test_mode
 from simpletransformers.classification import ClassificationModel, ClassificationArgs
 from sklearn.metrics import f1_score, accuracy_score
+from io import StringIO
 
 class ReturnTypesPredictionModel(model.Model):
     def __init__(self):
@@ -43,26 +46,27 @@ class ReturnTypesPredictionModel(model.Model):
         self.model = ClassificationModel(used_model_type, 'outputs', num_labels=self.labels.index.size, use_cuda=is_cuda_available(), args=self.__args())
 
     # Loads labels
-    def load_additional(self, labels) -> None:
+    def load_labels(self, labels) -> None:
         if not is_test_mode():
             copyTo(labels, get_labels_path())
         self.__load_labels(labels)
+    
+    def set_options(self, options: Options) -> None:
+        self.load_labels(self, StringIO(options.labels))
 
     # loads labels from a csv file
     def __load_labels(self, filepath_or_buffer) -> None:
         self.labels = pd.read_csv(filepath_or_buffer, header=None, sep=';', na_filter=False)
 
     # Trains the model using the given training set
-    def train_model(self, training_set) -> None:
+    def train_model(self, training_set: pd.DataFrame) -> None:
         if self.model is None:
             return
 
-        if not isinstance(training_set, pd.DataFrame):
-            training_set = pd.read_csv(training_set, header=None, sep=';', na_filter=False)
         self.model.train_model(training_set)
 
     # Evaluates the model using the given evaluation set
-    def eval_model(self, evaluation_set) -> dict:
+    def eval_model(self, evaluation_set: pd.DataFrame) -> dict:
         if self.model is None:
             return dict()
         def f1_multiclass(l, preds):
@@ -110,8 +114,13 @@ class ReturnTypesPredictionModel(model.Model):
     def cacheDirName(self) -> str:
         return 'cache_dir/'
 
-    # formats data into a csv dataframe    
-    def dataFormatter(self, data):
+    # converts the input data to a pandas frame
+    def convert_methods_to_frame(self, data: list[Method]) -> pd.DataFrame:
+        # TODO: convert to pandas dataframe
         if not isinstance(data, pd.DataFrame):
             return pd.read_csv(data, header=None, sep=';', na_filter=False)
         return data
+    
+    # returns a method identifier for the method for caching. Methods with the same identifier won't be predicted again.
+    def get_identifier_for_method(self, method: MethodContext) -> str:
+        return method.methodName

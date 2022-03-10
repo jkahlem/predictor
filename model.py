@@ -6,6 +6,7 @@ import threading
 import pandas as pd
 
 from config import get_script_dir, is_test_mode
+from messages import Options
 from methods import Method, MethodContext
 
 class ModelState(Enum):
@@ -33,10 +34,6 @@ class Model:
     def eval_model(self, evaluation_set) -> dict:
         pass
 
-    # Loads additional, model relevant data
-    def load_additional(self, additional_data) -> None:
-        pass
-
     # Makes predictions
     def predict(self, predictionData) -> list:
         pass
@@ -49,12 +46,16 @@ class Model:
     def outputsDirName(self) -> str:
         pass
 
-    # formats input data to the desired format
-    def dataFormatter(self, data):
+    # converts the input data to a pandas frame
+    def convert_methods_to_frame(self, data: list[Method]) -> pd.DataFrame:
         return data
     
-    # Returns a method identifier for the method for caching. Methods with the same identifier won't be predicted again.
-    def methodIdentifier(self, method: MethodContext) -> str:
+    # returns a method identifier for the method for caching. Methods with the same identifier won't be predicted again.
+    def get_identifier_for_method(self, method: MethodContext) -> str:
+        pass
+
+    # Sets the options for the model
+    def set_options(self, options: Options) -> None:
         pass
 
 class ModelHolder():
@@ -132,7 +133,7 @@ class ModelHolder():
             self.mutex.release()
             return
 
-        self.model.train_model(self.model.dataFormatter(training_set))
+        self.model.train_model(self.model.convert_methods_to_frame(training_set))
 
         self.mutex.release()
 
@@ -147,25 +148,10 @@ class ModelHolder():
             self.mutex.release()
             return
 
-        result = self.model.eval_model(self.model.dataFormatter(evaluation_set))
+        result = self.model.eval_model(self.model.convert_methods_to_frame(evaluation_set))
 
         self.mutex.release()
         return result
-
-    # Evaluates the model using the given evaluation set
-    def load_additional(self, additional_data) -> None:
-        if is_test_mode():
-            return
-        self.mutex.acquire()
-
-        if self.model is None:
-            self.mutex.release()
-            return
-
-        self.model.load_additional(additional_data)
-
-        self.mutex.release()
-
         
     # Makes predictions
     def predict(self, methods: list[MethodContext]) -> list:
@@ -180,7 +166,7 @@ class ModelHolder():
 
         result = list()
         for m in methods:
-            result.append(self.prediction_cache[self.model.methodIdentifier(m)])
+            result.append(self.prediction_cache[self.model.get_identifier_for_method(m)])
 
         self.mutex.release()
         return result
@@ -190,12 +176,23 @@ class ModelHolder():
         if len(methods) > 0:
             predictions = self.model.predict(methods)
             for i in range(len(predictions)):
-                self.prediction_cache[self.model.methodIdentifier(methods[i])] = predictions[i]
+                self.prediction_cache[self.model.get_identifier_for_method(methods[i])] = predictions[i]
 
     # returns a list of method names from the passed method names list which are not in the predictions cache
     def __get_unpredicted(self, methods: list[MethodContext]) -> list[MethodContext]:
         unpredicted = list()
         for m in methods:
-            if not self.model.methodIdentifier(m) in self.prediction_cache:
+            if not self.model.get_identifier_for_method(m) in self.prediction_cache:
                 unpredicted.append(m)
         return unpredicted
+    
+    def set_options(self, options: Options) -> None:
+        self.mutex.acquire()
+
+        if self.model is None:
+            self.mutex.release()
+            return
+
+        self.model.set_options(options)
+
+        self.mutex.release()

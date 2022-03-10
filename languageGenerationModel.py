@@ -84,11 +84,10 @@ class MethodGenerationModel(model.Model):
     # Evaluates the model using the given evaluation set
     def eval_model(self, evaluation_set: list) -> dict:
         pass
-        #return self.languageModeling.eval_model(evaluation_set)
-
-    # Not needed for parameter generation
-    def load_additional(self, additional_data) -> None:
-        pass
+    
+    # sets options for the model
+    def set_options(self, options: Options) -> None:
+        return super().set_options(options)
 
     # Makes predictions
     def predict(self, predictionData: list[Method]) -> list[str]:
@@ -109,25 +108,25 @@ class MethodGenerationModel(model.Model):
         return 'outputs/'
     
     # Returns a method identifier for the method for caching. Methods with the same identifier won't be predicted again.
-    def methodIdentifier(self, method: MethodContext) -> str:
+    def get_identifier_for_method(self, method: MethodContext) -> str:
         static = ''
         if method.isStatic:
             static = 'static,'
         return static + method.className + "," + method.methodName
 
-    # formats input data
-    def dataFormatter(self, data: list[Method]):
-        frame = pandas.DataFrame(columns=['prefix', 'input_text', 'target_text'])
+    # converts the input data to a pandas frame
+    def convert_methods_to_frame(self, data: list[Method]) -> pd.Dataframe:
+        frame = pd.DataFrame(columns=['prefix', 'input_text', 'target_text'])
         for method in data:
             self.__addMethodToFrame(method, frame)
         return data
     
-    def __addMethodToFrame(self, method: Method, frame: pandas.DataFrame):
+    def __addMethodToFrame(self, method: Method, frame: pd.DataFrame):
         self.__addGenerateParametersTask(method, frame)
         self.__addGenerateReturnTypeTask(method, frame)
         self.__addGenerateParameterTypeTask(method, frame)
 
-    def __addGenerateParametersTask(self, method: Method, frame: pandas.DataFrame):
+    def __addGenerateParametersTask(self, method: Method, frame: pd.DataFrame):
         self.__addTask(GenerateParametersTask, self.__getGenerateParametersInput(method.context), self.__parameterNames(method.values.parameters), frame)
     
     def __getGenerateParametersInput(self, context: MethodContext) -> str:
@@ -144,7 +143,7 @@ class MethodGenerationModel(model.Model):
             output += par.name
         return output
 
-    def __addGenerateReturnTypeTask(self, method: Method, frame: pandas.DataFrame):
+    def __addGenerateReturnTypeTask(self, method: Method, frame: pd.DataFrame):
         self.__addTask(AssignReturnTypeTask, self.__getGenerateReturnTypeInput(method.context), method.values.returnType, frame)
 
     def __getGenerateReturnTypeInput(self, context: MethodContext) -> str:
@@ -153,7 +152,7 @@ class MethodGenerationModel(model.Model):
             static = 'static '
         return 'method: ' + static + context.methodName + ". class: " + context.className + '.'
 
-    def __addGenerateParameterTypeTask(self, method: Method, frame: pandas.DataFrame):
+    def __addGenerateParameterTypeTask(self, method: Method, frame: pd.DataFrame):
         for par in method.values.parameters:
             self.__addTask(AssignParameterTypeTask, self.__getGenerateParameterTypeInput(method.context, par), par.type, frame)
             
@@ -163,7 +162,7 @@ class MethodGenerationModel(model.Model):
             static = 'static '
         return 'method: ' + static + context.methodName + ". class: " + context.className + '. parameter: ' + par.name
 
-    def __addTask(self, prefix, input_text, target_text, frame: pandas.DataFrame):
+    def __addTask(self, prefix, input_text, target_text, frame: pd.DataFrame):
         frame.append(pd.Series({'prefix': prefix, 'input_text': input_text, 'target_text': target_text}))
 
 ## Type assignment task
