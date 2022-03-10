@@ -1,4 +1,9 @@
+from io import StringIO
 import json
+
+class SupportedModels(str, Enum):
+    ReturnTypesPrediction = "ReturnTypesPrediction"
+    MethodGenerator = "MethodGenerator"
 
 # defines a stream message (in simplified http) wrapping the jsonrpc messages 
 class Message:
@@ -74,3 +79,18 @@ def __parse_header(fd) -> MessageHeader:
             raise Exception("Unexpected header option: " + parts[0])
 
     return MessageHeader(length, mediaType)
+
+# defines a train message 
+class TrainMessage:
+    def __init__(self, msg: dict):
+        self.targetModel = SupportedModels(msg['params']['targetModel'])
+        self.additional = StringIO(msg['params']['additional'])
+        self.training_set = StringIO(msg['params']['trainingSet'])
+        self.evaluation_set = StringIO(msg['params']['evaluationSet'])
+        self.id = msg['id']
+
+    def __str__(self) -> str:
+        return "Train message..."
+
+    def __repr__(self) -> str:
+        return "Train message..."

@@ -7,15 +7,11 @@ from enum import Enum
 from io import StringIO
 from languageGenerationModel import MethodGenerationModel
 
-from messages import Message, parse_message_from_fd
+from messages import Message, parse_message_from_fd, SupportedModels, TrainMessage
 from config import get_port, get_script_dir, is_cuda_available, load_config
 from model import ModelHolder
 from returnTypesPredictionModel import ReturnTypesPredictionModel
 from sentenceTransformer import testSentenceTransformer
-
-class SupportedModels(str, Enum):
-    ReturnTypesPrediction = "ReturnTypesPrediction"
-    MethodGenerator = "MethodGenerator"
 
 class JsonRpcErrorCodes(str, Enum):
     ParseError = -32700
@@ -55,24 +51,22 @@ class ConnectionHandler:
         print("Received message: " + msg['method'])
         
         if msg['method'] == "train":
-            self.__handle_train_message(msg)
+            self.__handle_train_message(TrainMessage(msg))
         elif msg['method'] == "predict":
             self.__handle_predict_message(msg)
         else:
             self.__send_error_msg(JsonRpcErrorCodes.MethodNotFound, "Method not found: " +msg['method'])
 
     # Handles a train message which trains a new model
-    def __handle_train_message(self, msg: dict) -> None:
-        additional, training_set, evaluation_set = StringIO(msg['params']['additional']), StringIO(msg['params']['trainingSet']), StringIO(msg['params']['evaluationSet'])
-
-        model = get_model(SupportedModels(msg['params']['targetModel']))
-        model.load_additional(additional)
+    def __handle_train_message(self, msg: TrainMessage) -> None:
+        model = get_model(msg.targetModel)
+        model.load_additional(msg.additional)
         model.create_new_model()
-        model.train_model(training_set)
+        model.train_model(msg.training_set)
 
-        result = model.eval_model(evaluation_set)
+        result = model.eval_model(msg.evaluation_set)
 
-        self.__send_evaluation_msg(msg['id'], result)
+        self.__send_evaluation_msg(msg.id, result)
     
     # Sends an evaluation object as response to a train message
     def __send_evaluation_msg(self, id, result: dict) -> None:
