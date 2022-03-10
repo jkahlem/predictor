@@ -1,6 +1,8 @@
 from io import StringIO
 import json
 
+from methods import Method, MethodContext
+
 class SupportedModels(str, Enum):
     ReturnTypesPrediction = "ReturnTypesPrediction"
     MethodGenerator = "MethodGenerator"
@@ -94,3 +96,52 @@ class TrainMessage:
 
     def __repr__(self) -> str:
         return "Train message..."
+
+# defines a train message 
+class NewTrainMessage:
+    def __init__(self, msg: dict):
+        self.training_data = [MethodContext(data) for data in msg['params']['trainData']]# Todo: convert to MethodContext?
+        self.options = Options(msg['params']['options'])
+        self.id = msg['id']
+
+    def __str__(self) -> str:
+        return "Train message..."
+
+    def __repr__(self) -> str:
+        return "Train message..."
+
+class NewEvaluationMessage:
+    def __init__(self, msg: dict):
+        self.training_data = [Method(data) for data in msg['params']['evaluationData']]# Todo: convert to MethodContext?
+        self.options = Options(msg['params']['options'])
+        self.id = msg['id']
+
+    def __str__(self) -> str:
+        return "Evaluation message..."
+
+    def __repr__(self) -> str:
+        return "Evaluation message..."
+
+
+class NewPredictMessage:
+    def __init__(self, msg: dict):
+        self.training_data = [MethodContext(data) for data in msg['params']['predictData']]# Todo: convert to MethodContext?
+        self.options = Options(msg['params']['options'])
+        self.id = msg['id']
+
+    def __str__(self) -> str:
+        return "Predict message..."
+
+    def __repr__(self) -> str:
+        return "Predict message..."
+
+class Options:
+    def __init__(self, options: dict):
+        self.targetModel = SupportedModels(options['targetModel'])
+        self.labels = StringIO(options['additional'])
+
+    def __str__(self) -> str:
+        return "Options..."
+
+    def __repr__(self) -> str:
+        return "Options..."
