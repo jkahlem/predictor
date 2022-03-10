@@ -52,6 +52,10 @@ class Model:
     # formats input data to the desired format
     def dataFormatter(self, data):
         return data
+    
+    # Returns a method identifier for the method for caching. Methods with the same identifier won't be predicted again.
+    def methodIdentifier(self, method: MethodContext) -> str:
+        pass
 
 class ModelHolder():
     def __init__(self, model: Model):
@@ -164,34 +168,34 @@ class ModelHolder():
 
         
     # Makes predictions
-    def predict(self, method_names: list) -> list:
+    def predict(self, methods: list[MethodContext]) -> list:
         self.mutex.acquire()
 
         if self.model is None:
             self.mutex.release()
             return list()
 
-        unpredicted = self.__get_unpredicted(method_names)
+        unpredicted = self.__get_unpredicted(methods)
         self.__predict_and_save_in_cache(unpredicted)
 
         result = list()
-        for m in method_names:
-            result.append(self.prediction_cache[m])
+        for m in methods:
+            result.append(self.prediction_cache[self.model.methodIdentifier(m)])
 
         self.mutex.release()
         return result
 
     # makes predictions and saves them in the prediction cache
-    def __predict_and_save_in_cache(self, method_names: list):
-        if len(method_names) > 0:
-            predictions = self.model.predict(method_names)
+    def __predict_and_save_in_cache(self, methods: list[MethodContext]):
+        if len(methods) > 0:
+            predictions = self.model.predict(methods)
             for i in range(len(predictions)):
-                self.prediction_cache[method_names[i]] = predictions[i]
+                self.prediction_cache[self.model.methodIdentifier(methods[i])] = predictions[i]
 
     # returns a list of method names from the passed method names list which are not in the predictions cache
-    def __get_unpredicted(self, method_names: list) -> list:
+    def __get_unpredicted(self, methods: list[MethodContext]) -> list[MethodContext]:
         unpredicted = list()
-        for m in method_names:
-            if not m in self.prediction_cache:
+        for m in methods:
+            if not self.model.methodIdentifier(m) in self.prediction_cache:
                 unpredicted.append(m)
         return unpredicted

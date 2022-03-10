@@ -19,6 +19,10 @@ from transformers.models.auto import AutoModel
 import torch
 import math
 
+GenerateParametersTask = 'generate parameters'
+AssignReturnTypeTask = 'assign returntype'
+AssignParameterTypeTask = 'assign parametertype'
+
 # TODO: rework model loading... (method generation needs two models - language modeling model and generator, but model holder supports only one model)
 #       -> the underlying model should do the needed stuff. However, the model holder should call the loading/initializing methods instead of the message script.
 #       -> maybe rename to "initialize/load for training" and "initialize/load for prediction"...
@@ -87,11 +91,11 @@ class MethodGenerationModel(model.Model):
         pass
 
     # Makes predictions
-    def predict(self, predictionData: list) -> list:
+    def predict(self, predictionData: list[Method]) -> list[str]:
         model = T5Model('t5', 'outputs')
         inputs = list()
-        for methodName in predictionData:
-            inputs.append("type assignment: " + methodName)
+        for method in predictionData:
+            inputs.append(GenerateParametersTask + ': ' + self.__getGenerateParametersInput(method))
         outputs = model.predict(inputs)
         print(outputs)
         return outputs
@@ -103,11 +107,16 @@ class MethodGenerationModel(model.Model):
     # path addition for the outputs dir 
     def outputsDirName(self) -> str:
         return 'outputs/'
+    
+    # Returns a method identifier for the method for caching. Methods with the same identifier won't be predicted again.
+    def methodIdentifier(self, method: MethodContext) -> str:
+        static = ''
+        if method.isStatic:
+            static = 'static,'
+        return static + method.className + "," + method.methodName
 
     # formats input data
     def dataFormatter(self, data: list[Method]):
-        #if not isinstance(data, pd.DataFrame):
-        #    return pd.read_csv(data, header=None, names=['prefix', 'input_text', 'target_text'], sep=';', na_filter=False)
         frame = pandas.DataFrame(columns=['prefix', 'input_text', 'target_text'])
         for method in data:
             self.__addMethodToFrame(method, frame)
@@ -119,32 +128,40 @@ class MethodGenerationModel(model.Model):
         self.__addGenerateParameterTypeTask(method, frame)
 
     def __addGenerateParametersTask(self, method: Method, frame: pandas.DataFrame):
+        self.__addTask(GenerateParametersTask, self.__getGenerateParametersInput(method.context), self.__parameterNames(method.values.parameters), frame)
+    
+    def __getGenerateParametersInput(self, context: MethodContext) -> str:
         static = ''
-        if method.context.isStatic:
+        if context.isStatic:
             static = 'static '
-        input = 'method: ' + static + method.context.methodName + ". class: " + method.context.className + '.'
-        self.__addTask('generate parameters', input, self.__parameterNames(method.values.parameters), frame)
+        return 'method: ' + static + context.methodName + ". class: " + context.className + '.'
     
     def __parameterNames(self, parameters: list[Parameter]) -> str:
+        if len(parameters) == 0:
+            return 'void'
         output = ''
         for par in parameters:
             output += par.name
         return output
 
     def __addGenerateReturnTypeTask(self, method: Method, frame: pandas.DataFrame):
+        self.__addTask(AssignReturnTypeTask, self.__getGenerateReturnTypeInput(method.context), method.values.returnType, frame)
+
+    def __getGenerateReturnTypeInput(self, context: MethodContext) -> str:
         static = ''
-        if method.context.isStatic:
+        if context.isStatic:
             static = 'static '
-        input = 'method: ' + static + method.context.methodName + ". class: " + method.context.className + '.'
-        self.__addTask('generate returntype', input, method.values.returnType, frame)
+        return 'method: ' + static + context.methodName + ". class: " + context.className + '.'
 
     def __addGenerateParameterTypeTask(self, method: Method, frame: pandas.DataFrame):
-        static = ''
-        if method.context.isStatic:
-            static = 'static '
         for par in method.values.parameters:
-            input = 'method: ' + static + method.context.methodName + ". class: " + method.context.className + '. parameter: ' + par.name
-            self.__addTask('generate parametertype', input, par.type, frame)
+            self.__addTask(AssignParameterTypeTask, self.__getGenerateParameterTypeInput(method.context, par), par.type, frame)
+            
+    def __getGenerateParameterTypeInput(self, context: MethodContext, par: Parameter) -> str:
+        static = ''
+        if context.isStatic:
+            static = 'static '
+        return 'method: ' + static + context.methodName + ". class: " + context.className + '. parameter: ' + par.name
 
     def __addTask(self, prefix, input_text, target_text, frame: pandas.DataFrame):
         frame.append(pd.Series({'prefix': prefix, 'input_text': input_text, 'target_text': target_text}))
