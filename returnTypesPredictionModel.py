@@ -10,6 +10,7 @@ from sklearn.metrics import f1_score, accuracy_score
 from io import StringIO
 
 class ReturnTypesPredictionModel(model.Model):
+    model: ClassificationModel
     def __init__(self):
         self.model = None
         self.labels = None
@@ -75,22 +76,27 @@ class ReturnTypesPredictionModel(model.Model):
         return result
 
     # Makes predictions for the expected return type of each of the given method names (uses cached values if exist)
-    def predict(self, method_names: list) -> list:
+    def predict(self, methods: list[MethodContext]) -> list:
         if is_test_mode():
             # In test mode, return a list of random values
             types = list()
-            for _ in method_names:
+            for _ in methods:
                 types.append(self.__get_type_by_label(randint(0, 1)))
             return types
 
         if self.model is None:
             return list()
  
-        predictions, _ = self.model.predict(method_names)
+        inputs = list()
+        for method in methods:
+            inputs.append(method.methodName)
+
+        predictions, _ = self.model.predict(inputs)
+
         predicted_types = list()
         for p in predictions:
             predicted_types.append(self.__get_type_by_label(p))
-        return predictions
+        return predicted_types
 
     # returns the type name for the given label
     def __get_type_by_label(self, label: int) -> str:
@@ -106,6 +112,14 @@ class ReturnTypesPredictionModel(model.Model):
         row_for_label = self.labels.loc[self.labels.iloc[:, 1] == label]
         return str(row_for_label.iloc[0, 0])
     
+    # returns the type name for the given label
+    def __get_label_by_type(self, type: str) -> str:
+        if self.labels is None:
+            return ""
+
+        row_for_label = self.labels.loc[self.labels.iloc[:, 0] == type]
+        return str(row_for_label.iloc[0, 1])
+    
     # outputs directory name
     def outputsDirName(self) -> str:
         return 'outputs/'
@@ -116,9 +130,9 @@ class ReturnTypesPredictionModel(model.Model):
 
     # converts the input data to a pandas frame
     def convert_methods_to_frame(self, data: list[Method]) -> pd.DataFrame:
-        # TODO: convert to pandas dataframe
-        if not isinstance(data, pd.DataFrame):
-            return pd.read_csv(data, header=None, sep=';', na_filter=False)
+        frame = pd.DataFrame(columns=['text', 'labels'])
+        for method in data:
+            frame.append(pd.Series({'text': method.context.methodName, 'labels': self.__get_label_by_type(method.values.returnType)}))
         return data
     
     # returns a method identifier for the method for caching. Methods with the same identifier won't be predicted again.
