@@ -1,5 +1,5 @@
 from messages import Options
-from methods import Method, MethodContext, Parameter
+from methods import Method, MethodContext, MethodValues, Parameter
 from simpletransformers.t5 import T5Model, T5Args
 from transformers.training_args import TrainingArguments
 import model
@@ -23,19 +23,6 @@ import math
 GenerateParametersTask = 'generate parameters'
 AssignReturnTypeTask = 'assign returntype'
 AssignParameterTypeTask = 'assign parametertype'
-
-# TODO: rework model loading... (method generation needs two models - language modeling model and generator, but model holder supports only one model)
-#       -> the underlying model should do the needed stuff. However, the model holder should call the loading/initializing methods instead of the message script.
-#       -> maybe rename to "initialize/load for training" and "initialize/load for prediction"...
-#       - Also: clear temporary files (train/eval messages ...)
-#
-#  Using current T5 model works pretty good! example predictions:
-#  - "getName" : "void."
-#  - "createPerson" : "void."
-#  - "setPosition" : "position."
-#  - "withName" : "name."
-#  - "findByNameOrAge" : "name, age."
-#  - "compare" : "a, b."
 
 class MethodGenerationModel(model.Model):
     options: Options
@@ -84,13 +71,46 @@ class MethodGenerationModel(model.Model):
         self.options = options
 
     # Makes predictions
-    def predict(self, predictionData: list[Method]) -> list[str]:
+    def predict(self, predictionData: list[MethodContext]) -> list[str]:
+        parameters = self.__predict_parameter_list(predictionData)
+        returntypes = self.__predict_return_types(predictionData)
+        parametertypes = self.__predict_parameter_types(predictionData, parameters)
+
+        paroffset = 0
+        result: list[MethodValues] = list()
+        for i, _ in enumerate(predictionData):
+            value = MethodValues()
+            value.returnType = returntypes[i]
+            parameter_names = parameters[i].split(',')
+            for name in parameter_names:
+                parameter = Parameter()
+                parameter.name = name
+                parameter.type = parametertypes[paroffset]
+                value.parameters.append(parameter)
+                paroffset += 1
+            result.append(value)
+        return result
+    
+    def __predict_parameter_list(self, data: list[MethodContext]) -> list[str]:
         inputs = list()
-        for method in predictionData:
+        for method in data:
             inputs.append(GenerateParametersTask + ': ' + self.__getGenerateParametersInput(method))
-        outputs = self.model.predict(inputs)
-        print(outputs)
-        return outputs
+        return self.model.predict(inputs)
+    
+    def __predict_return_types(self, data: list[MethodContext]) -> list[str]:
+        inputs = list()
+        for method in data:
+            inputs.append(AssignReturnTypeTask + ': ' + self.__getGenerateReturnTypeInput(method))
+        return self.model.predict(inputs)
+
+    def __predict_parameter_types(self, data: list[MethodContext], parameterLists: list[str]) -> list[str]:
+        inputs = list()
+        for i, method in enumerate(data):
+            parameters = parameterLists[i].split(',')
+            for par in parameters:
+                inputs.append(AssignParameterTypeTask + ': ' + self.__getGenerateParameterTypeInput(method, par))
+        return self.model.predict(inputs)
+        
 
     # path addition for the cacheDir
     def cache_dir_name(self) -> str:
@@ -151,13 +171,13 @@ class MethodGenerationModel(model.Model):
 
     def __addGenerateParameterTypeTask(self, method: Method, frame: pd.DataFrame):
         for par in method.values.parameters:
-            self.__addTask(AssignParameterTypeTask, self.__getGenerateParameterTypeInput(method.context, par), par.type, frame)
+            self.__addTask(AssignParameterTypeTask, self.__getGenerateParameterTypeInput(method.context, par.name), par.type, frame)
             
-    def __getGenerateParameterTypeInput(self, context: MethodContext, par: Parameter) -> str:
+    def __getGenerateParameterTypeInput(self, context: MethodContext, parName: str) -> str:
         static = ''
         if context.isStatic:
             static = 'static '
-        return 'method: ' + static + context.methodName + ". class: " + context.className + '. parameter: ' + par.name
+        return 'method: ' + static + context.methodName + ". class: " + context.className + '. parameter: ' + parName
 
     def __addTask(self, prefix, input_text, target_text, frame: pd.DataFrame):
         frame.append(pd.Series({'prefix': prefix, 'input_text': input_text, 'target_text': target_text}))

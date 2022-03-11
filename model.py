@@ -27,15 +27,15 @@ class Model:
         pass
 
     # Trains the model using the given training set
-    def train_model(self, training_set) -> None:
+    def train_model(self, training_set: pd.DataFrame) -> None:
         pass
 
     # Evaluates the model using the given evaluation set
-    def eval_model(self, evaluation_set) -> dict:
+    def eval_model(self, evaluation_set: pd.DataFrame) -> dict:
         pass
 
     # Makes predictions
-    def predict(self, predictionData) -> list:
+    def predict(self, predictionData: list[MethodContext]) -> list:
         pass
 
     # path addition for the cacheDir
