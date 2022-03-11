@@ -1,3 +1,4 @@
+from messages import Options
 from methods import Method, MethodContext, Parameter
 from simpletransformers.t5 import T5Model, T5Args
 from transformers.training_args import TrainingArguments
@@ -37,9 +38,10 @@ AssignParameterTypeTask = 'assign parametertype'
 #  - "compare" : "a, b."
 
 class MethodGenerationModel(model.Model):
+    options: Options
     def __init__(self):
-        self.languageModeling = None
-        self.languageGenerator = None
+        self.model = None
+        self.options = None
 
     # prints a message if cuda is used or not
     def __print_model_initialization(self) -> None:
@@ -49,20 +51,24 @@ class MethodGenerationModel(model.Model):
             print('Initialize language modelling model without CUDA')
     
     def __languageModelingArgs(self) -> LanguageModelingArgs:
-        return LanguageModelingArgs(cache_dir=self.cacheDirName(), output_dir=self.outputsDirName(), mlm=False)
+        return LanguageModelingArgs(cache_dir=self.cache_dir_name(), output_dir=self.outputs_dir_name(), mlm=False)
 
     def __languageGenerationArgs(self) -> LanguageGenerationArgs:
-        return LanguageGenerationArgs(cache_dir=self.cacheDirName(), output_dir=self.outputsDirName())
+        return LanguageGenerationArgs(cache_dir=self.cache_dir_name(), output_dir=self.outputs_dir_name())
+
+    def __t5Args(self) -> T5Args:
+        return T5Args(cache_dir=self.cache_dir_name(), output_dir=self.outputs_dir_name(), num_train_epochs=3)
 
     # initializes a new model
     def init_new_model(self) -> None:
         self.__print_model_initialization()
-        used_model_type, used_model = get_model_config()
+        #used_model_type, used_model = get_model_config()
+        self.model = T5Model('t5', 't5-small', args=self.__t5Args(), use_cuda=is_cuda_available())
         #self.languageModeling = LanguageModelingModel('gpt2', 'gpt2', use_cuda=is_cuda_available(), args=self.__languageModelingArgs())
 
     # Loads an already created/trained classification model
     def load_model(self) -> None:
-        pass
+        self.model = T5Model('t5', self.outputs_dir_name(), args=self.__t5Args(), use_cuda=is_cuda_available())
         #self.languageGenerator = LanguageGenerationModel('gpt2', self.outputsDirName(), use_cuda=is_cuda_available(), args=self.__languageGenerationArgs())
 
     # https://huggingface.co/blog/how-to-generate
@@ -75,37 +81,36 @@ class MethodGenerationModel(model.Model):
 
     # Trains the model using the given training set
     def train_model(self, training_set: str) -> None:
-        #trainDf = pd.read_csv(training_set, header=None, names=['prefix', 'input_text', 'target_text'], sep=';', na_filter=False)
-        args = T5Args()
-        args.num_train_epochs = 3
-        model = T5Model('t5', 't5-small', args=args, use_cuda=True)
-        model.train_model(training_set)
+        self.model.train_model(training_set)
 
     # Evaluates the model using the given evaluation set
-    def eval_model(self, evaluation_set: list) -> dict:
-        pass
+    def eval_model(self, _: list) -> dict:
+        raise Exception("Unsupported method: The language generation model has no evaluation method.")
     
     # sets options for the model
     def set_options(self, options: Options) -> None:
-        return super().set_options(options)
+        self.options = options
 
     # Makes predictions
     def predict(self, predictionData: list[Method]) -> list[str]:
-        model = T5Model('t5', 'outputs')
         inputs = list()
         for method in predictionData:
             inputs.append(GenerateParametersTask + ': ' + self.__getGenerateParametersInput(method))
-        outputs = model.predict(inputs)
+        outputs = self.model.predict(inputs)
         print(outputs)
         return outputs
 
     # path addition for the cacheDir
-    def cacheDirName(self) -> str:
-        return 'cache_dir/'
+    def cache_dir_name(self) -> str:
+        return self.__parent_dir() + 'cache_dir/'
 
     # path addition for the outputs dir 
-    def outputsDirName(self) -> str:
-        return 'outputs/'
+    def outputs_dir_name(self) -> str:
+        return self.__parent_dir() +'outputs/'
+
+    # the main directory for this model
+    def __parent_dir(self) -> str:
+        return 'models/language_generation/'+self.options.identifier+'/'
     
     # Returns a method identifier for the method for caching. Methods with the same identifier won't be predicted again.
     def get_identifier_for_method(self, method: MethodContext) -> str:

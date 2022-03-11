@@ -85,9 +85,11 @@ def __parse_header(fd) -> MessageHeader:
 class Options:
     labels: str
     targetModel: SupportedModels
+    identifier: str
 
     def __init__(self, options: dict):
         self.targetModel = SupportedModels(options['targetModel'])
+        self.identifier = options['identifier']
         if 'labels' in options:
             self.labels = options['labels']
 
@@ -97,7 +99,6 @@ class Options:
     def __repr__(self) -> str:
         return "Options..."
 
-# defines a train message 
 class TrainMessage:
     training_data: list[Method]
     options: Options

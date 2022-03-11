@@ -24,7 +24,7 @@ class ReturnTypesPredictionModel(model.Model):
 
     # the arguments to use in this model
     def __args(self) -> ClassificationArgs:
-        return ClassificationArgs(cache_dir=self.cacheDirName(), output_dir=self.outputsDirName())
+        return ClassificationArgs(cache_dir=self.cache_dir_name(), output_dir=self.outputs_dir_name())
     
     # initializes a new classification model
     def init_new_model(self) -> None:
@@ -44,7 +44,7 @@ class ReturnTypesPredictionModel(model.Model):
     def __load_model(self) -> None:
         self.__print_model_initialization()
         used_model_type, _ = get_model_config()
-        self.model = ClassificationModel(used_model_type, 'outputs', num_labels=self.labels.index.size, use_cuda=is_cuda_available(), args=self.__args())
+        self.model = ClassificationModel(used_model_type, self.outputs_dir_name(), num_labels=self.labels.index.size, use_cuda=is_cuda_available(), args=self.__args())
 
     # Loads labels
     def load_labels(self, labels) -> None:
@@ -119,14 +119,18 @@ class ReturnTypesPredictionModel(model.Model):
 
         row_for_label = self.labels.loc[self.labels.iloc[:, 0] == type]
         return str(row_for_label.iloc[0, 1])
-    
-    # outputs directory name
-    def outputsDirName(self) -> str:
-        return 'outputs/'
 
-    # cache directory name
-    def cacheDirName(self) -> str:
-        return 'cache_dir/'
+    # path addition for the cacheDir
+    def cache_dir_name(self) -> str:
+        return self.__parent_dir() + 'cache_dir/'
+
+    # path addition for the outputs dir 
+    def outputs_dir_name(self) -> str:
+        return self.__parent_dir() +'outputs/'
+
+    # the main directory for this model
+    def __parent_dir(self) -> str:
+        return 'models/returntypes/'+self.options.identifier+'/'
 
     # converts the input data to a pandas frame
     def convert_methods_to_frame(self, data: list[Method]) -> pd.DataFrame:

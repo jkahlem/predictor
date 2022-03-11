@@ -39,11 +39,11 @@ class Model:
         pass
 
     # path addition for the cacheDir
-    def cacheDirName(self) -> str:
+    def cache_dir_name(self) -> str:
         pass
 
     # path addition for the outputs dir 
-    def outputsDirName(self) -> str:
+    def outputs_dir_name(self) -> str:
         pass
 
     # converts the input data to a pandas frame
@@ -62,6 +62,7 @@ class ModelHolder():
     def __init__(self, model: Model):
         self.model_state = ModelState.NONE
         self.model = model
+        self.model_identifier = ''
         self.mutex = threading.Lock()
         self.prediction_cache = dict()
 
@@ -87,8 +88,8 @@ class ModelHolder():
 
     # removes the model files used by a previously trained model    
     def __remove_previous_model_files(self) -> None:
-        self.__remove_dir_if_exists(os.path.join(get_script_dir(), self.model.outputsDirName()))
-        self.__remove_dir_if_exists(os.path.join(get_script_dir(), self.model.cacheDirName()))
+        self.__remove_dir_if_exists(os.path.join(get_script_dir(), self.model.outputs_dir_name()))
+        self.__remove_dir_if_exists(os.path.join(get_script_dir(), self.model.cache_dir_name()))
 
     # removes a directory failsafe
     def __remove_dir_if_exists(self, path: str) -> None:
@@ -194,5 +195,6 @@ class ModelHolder():
             return
 
         self.model.set_options(options)
+        self.model_identifier = options.identifier
 
         self.mutex.release()

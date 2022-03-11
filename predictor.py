@@ -156,6 +156,11 @@ def start_server():
 def get_model(options: Options) -> ModelHolder:
     global prediction_models, prediction_model_lock
     prediction_model_lock.acquire()
+
+    if options.targetModel in prediction_models and is_different_model_identifier(prediction_models[options.targetModel], options.identifier):
+        # TODO: Unload the model
+        del prediction_models[options.targetModel]
+
     if not options.targetModel in prediction_models:
         if options.targetModel == SupportedModels.ReturnTypesPrediction:
             prediction_models[options.targetModel] = ModelHolder(ReturnTypesPredictionModel())
@@ -164,9 +169,14 @@ def get_model(options: Options) -> ModelHolder:
         else:
             prediction_model_lock.release()
             raise Exception("Unsupported target model: " + options.targetModel)
+
     prediction_models[options.targetModel].set_options(options)
+
     prediction_model_lock.release()
     return prediction_models[options.targetModel]
+
+def is_different_model_identifier(model: ModelHolder, identifier: str) -> bool:
+    return model.model_identifier != identifier
 
 # Startup script for the server
 if __name__ == '__main__':
