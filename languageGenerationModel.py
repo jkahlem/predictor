@@ -49,12 +49,6 @@ class MethodGenerationModel(model.Model):
             print('Initialize language modelling model using CUDA')
         else:
             print('Initialize language modelling model without CUDA')
-    
-    def __languageModelingArgs(self) -> LanguageModelingArgs:
-        return LanguageModelingArgs(cache_dir=self.cache_dir_name(), output_dir=self.outputs_dir_name(), mlm=False)
-
-    def __languageGenerationArgs(self) -> LanguageGenerationArgs:
-        return LanguageGenerationArgs(cache_dir=self.cache_dir_name(), output_dir=self.outputs_dir_name())
 
     def __t5Args(self) -> T5Args:
         return T5Args(cache_dir=self.cache_dir_name(), output_dir=self.outputs_dir_name(), num_train_epochs=3)
@@ -64,12 +58,10 @@ class MethodGenerationModel(model.Model):
         self.__print_model_initialization()
         #used_model_type, used_model = get_model_config()
         self.model = T5Model('t5', 't5-small', args=self.__t5Args(), use_cuda=is_cuda_available())
-        #self.languageModeling = LanguageModelingModel('gpt2', 'gpt2', use_cuda=is_cuda_available(), args=self.__languageModelingArgs())
 
     # Loads an already created/trained classification model
     def load_model(self) -> None:
         self.model = T5Model('t5', self.outputs_dir_name(), args=self.__t5Args(), use_cuda=is_cuda_available())
-        #self.languageGenerator = LanguageGenerationModel('gpt2', self.outputsDirName(), use_cuda=is_cuda_available(), args=self.__languageGenerationArgs())
 
     # https://huggingface.co/blog/how-to-generate
     # https://towardsdatascience.com/illustrated-guide-to-transformers-step-by-step-explanation-f74876522bc0
@@ -180,5 +172,3 @@ class MethodGenerationModel(model.Model):
 #
 # prefix: "type classification"
 # input_text: "<parameter name>"
-
-# TODO: Create resource directory if not existing ... if this is still needed ...

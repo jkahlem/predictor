@@ -27,6 +27,7 @@ class ConnectionHandler:
 
     # handles the connection
     def handle(self) -> None:
+        msg: Message = Message()
         try:
             while True:
                 msg = parse_message_from_fd(self.fd)
@@ -40,7 +41,8 @@ class ConnectionHandler:
                 logging.exception("Error")
         except Exception:
             logging.exception("Error")
-            self.__send_error_msg(JsonRpcErrorCodes.ParseError, "Parser error")
+            if msg != None and msg.body != None and msg.body is dict and 'id' in msg.body:
+                self.__send_error_msg(msg.body['id'], JsonRpcErrorCodes.ParseError, "Parser error")
         finally:
             print("connection closed")
             self.connection.close()
@@ -56,7 +58,7 @@ class ConnectionHandler:
         elif msg['method'] == "predict":
             self.__handle_predict_message(PredictMessage(msg))
         else:
-            self.__send_error_msg(JsonRpcErrorCodes.MethodNotFound, "Method not found: " +msg['method'])
+            self.__send_error_msg(msg['id'], JsonRpcErrorCodes.MethodNotFound, "Method not found: " +msg['method'])
 
     # Handles a train message which trains a new model
     def __handle_train_message(self, msg: TrainMessage) -> None:
@@ -99,7 +101,7 @@ class ConnectionHandler:
 
         prediction = model.predict(msg.prediction_data)
         if len(prediction) != len(msg.prediction_data):
-            self.__send_error_msg("Internal error")
+            self.__send_error_msg(msg.id, JsonRpcErrorCodes.InternalError, "Internal error")
             print("Only " + str(len(prediction)) + " predicted, expected to predict " + str(len(msg.prediction_data)) + " types")
             return
 
@@ -116,9 +118,9 @@ class ConnectionHandler:
         return dict(jsonrpc="2.0", id=id, result=result)
     
     # Sends a jsonrpc response error with the given message
-    def __send_error_msg(self, code, msg: str) -> None:
+    def __send_error_msg(self, id, code, msg: str) -> None:
         print("Send error message with code " + str(code) + ": " + msg)
-        response_error = dict(jsonrpc="2.0", code=code, msg=msg)
+        response_error = dict(jsonrpc="2.0", id=id, code=code, msg=msg)
         self.__send_str_to_conn(str(Message(None, response_error)))
 
     # Sends a plain string to the connection
