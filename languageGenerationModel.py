@@ -1,3 +1,5 @@
+from io import StringIO
+import tempfile
 from messages import Options
 from methods import Method, MethodContext, MethodValues, Parameter
 from simpletransformers.t5 import T5Model, T5Args
@@ -23,6 +25,18 @@ import math
 GenerateParametersTask = 'generate parameters'
 AssignReturnTypeTask = 'assign returntype'
 AssignParameterTypeTask = 'assign parametertype'
+
+class StrBuilder:
+    def __init__(self) -> None:
+        self.len = 0
+        self.temp = tempfile.TemporaryFile()
+    
+    def append(self, s: str):
+        self.len += self.temp.write(s.encode('utf-8'))
+    
+    def to_string(self) -> str:
+        self.temp.seek(0)
+        return self.temp.read(self.len).decode('utf-8')
 
 class MethodGenerationModel(model.Model):
     options: Options
@@ -136,23 +150,26 @@ class MethodGenerationModel(model.Model):
         print("Convert list of " + str(len(data)) + " methods to frame ...")
         i = 0
         n = 1000
-        frame = pd.DataFrame(columns=['prefix', 'input_text', 'target_text'])
+        #frame = pd.DataFrame(columns=['prefix', 'input_text', 'target_text'])
+        csv_string = StrBuilder()
         for method in data:
             if i > n:
                 print("[" + str(i) + "/" + str(len(data)) + "] Converting methods ...")
                 n += 1000
-            self.__addMethodToFrame(method, frame)
+            self.__addMethodToFrame(method, csv_string)
             i += 1
+        print("read from csv string")
+        frame = pd.read_csv(StringIO(csv_string.to_string()), header=None, names=['prefix', 'input_text', 'target_text'], sep=";", na_filter=False)
         print("Done.")
-        return data
+        return frame
     
-    def __addMethodToFrame(self, method: Method, frame: pd.DataFrame):
-        self.__addGenerateParametersTask(method, frame)
-        self.__addGenerateReturnTypeTask(method, frame)
-        self.__addGenerateParameterTypeTask(method, frame)
+    def __addMethodToFrame(self, method: Method, csv_string: StrBuilder):
+        self.__addGenerateParametersTask(method, csv_string)
+        self.__addGenerateReturnTypeTask(method, csv_string)
+        self.__addGenerateParameterTypeTask(method, csv_string)
 
-    def __addGenerateParametersTask(self, method: Method, frame: pd.DataFrame):
-        self.__addTask(GenerateParametersTask, self.__getGenerateParametersInput(method.context), self.__parameterNames(method.values.parameters), frame)
+    def __addGenerateParametersTask(self, method: Method, csv_string: StrBuilder):
+        self.__addTask(GenerateParametersTask, self.__getGenerateParametersInput(method.context), self.__parameterNames(method.values.parameters), csv_string)
     
     def __getGenerateParametersInput(self, context: MethodContext) -> str:
         static = ''
@@ -168,8 +185,8 @@ class MethodGenerationModel(model.Model):
             output += par.name
         return output
 
-    def __addGenerateReturnTypeTask(self, method: Method, frame: pd.DataFrame):
-        self.__addTask(AssignReturnTypeTask, self.__getGenerateReturnTypeInput(method.context), method.values.returnType, frame)
+    def __addGenerateReturnTypeTask(self, method: Method, csv_string: StrBuilder):
+        self.__addTask(AssignReturnTypeTask, self.__getGenerateReturnTypeInput(method.context), method.values.returnType, csv_string)
 
     def __getGenerateReturnTypeInput(self, context: MethodContext) -> str:
         static = ''
@@ -177,9 +194,9 @@ class MethodGenerationModel(model.Model):
             static = 'static '
         return 'method: ' + static + context.methodName + ". class: " + context.className + '.'
 
-    def __addGenerateParameterTypeTask(self, method: Method, frame: pd.DataFrame):
+    def __addGenerateParameterTypeTask(self, method: Method, csv_string: StrBuilder):
         for par in method.values.parameters:
-            self.__addTask(AssignParameterTypeTask, self.__getGenerateParameterTypeInput(method.context, par.name), par.type, frame)
+            self.__addTask(AssignParameterTypeTask, self.__getGenerateParameterTypeInput(method.context, par.name), par.type, csv_string)
             
     def __getGenerateParameterTypeInput(self, context: MethodContext, parName: str) -> str:
         static = ''
@@ -187,8 +204,9 @@ class MethodGenerationModel(model.Model):
             static = 'static '
         return 'method: ' + static + context.methodName + ". class: " + context.className + '. parameter: ' + parName
 
-    def __addTask(self, prefix, input_text, target_text, frame: pd.DataFrame):
-        frame.append(pd.Series({'prefix': prefix, 'input_text': input_text, 'target_text': target_text}), ignore_index=True)
+    def __addTask(self, prefix, input_text, target_text, csv_string: StrBuilder):
+        #frame.append(pd.Series({'prefix': prefix, 'input_text': input_text, 'target_text': target_text}), ignore_index=True)
+        csv_string.append(prefix + ";" + input_text + ";" + target_text + "\n")
 
 ## Type assignment task
 # prefix: "type assignment"
