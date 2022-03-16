@@ -34,8 +34,9 @@ class MethodValues:
     def __init__(self, values: dict) -> None:
         self.returnType = values['returnType']
         self.parameters = list()
-        for rawParameter in values['parameters']:
-            self.parameters.append(Parameter(rawParameter))
+        if 'parameters' in values and values['parameters'] is not None:
+            for rawParameter in values['parameters']:
+                self.parameters.append(Parameter(rawParameter))
 
     def __str__(self) -> str:
         pass

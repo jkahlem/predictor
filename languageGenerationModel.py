@@ -132,10 +132,18 @@ class MethodGenerationModel(model.Model):
         return static + method.className + "," + method.methodName
 
     # converts the input data to a pandas frame
-    def convert_methods_to_frame(self, data: list[Method]) -> pd.Dataframe:
+    def convert_methods_to_frame(self, data: list[Method]) -> pd.DataFrame:
+        print("Convert list of " + str(len(data)) + " methods to frame ...")
+        i = 0
+        n = 1000
         frame = pd.DataFrame(columns=['prefix', 'input_text', 'target_text'])
         for method in data:
+            if i > n:
+                print("[" + str(i) + "/" + str(len(data)) + "] Converting methods ...")
+                n += 1000
             self.__addMethodToFrame(method, frame)
+            i += 1
+        print("Done.")
         return data
     
     def __addMethodToFrame(self, method: Method, frame: pd.DataFrame):
@@ -180,7 +188,7 @@ class MethodGenerationModel(model.Model):
         return 'method: ' + static + context.methodName + ". class: " + context.className + '. parameter: ' + parName
 
     def __addTask(self, prefix, input_text, target_text, frame: pd.DataFrame):
-        frame.append(pd.Series({'prefix': prefix, 'input_text': input_text, 'target_text': target_text}))
+        frame.append(pd.Series({'prefix': prefix, 'input_text': input_text, 'target_text': target_text}), ignore_index=True)
 
 ## Type assignment task
 # prefix: "type assignment"

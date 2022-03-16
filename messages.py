@@ -1,4 +1,5 @@
 import json
+from enum import Enum
 
 from methods import Method, MethodContext
 
@@ -88,7 +89,7 @@ class Options:
     identifier: str
 
     def __init__(self, options: dict):
-        self.targetModel = SupportedModels(options['targetModel'])
+        self.targetModel = SupportedModels(options['type'])
         self.identifier = options['identifier']
         if 'labels' in options:
             self.labels = options['labels']

@@ -27,7 +27,7 @@ class ConnectionHandler:
 
     # handles the connection
     def handle(self) -> None:
-        msg: Message = Message()
+        msg: Message
         try:
             while True:
                 msg = parse_message_from_fd(self.fd)
@@ -62,7 +62,7 @@ class ConnectionHandler:
 
     # Handles a train message which trains a new model
     def __handle_train_message(self, msg: TrainMessage) -> None:
-        model = get_model(msg.options.targetModel)
+        model = get_model(msg.options)
         model.create_new_model()
         model.train_model(msg.training_data)
 
@@ -71,7 +71,7 @@ class ConnectionHandler:
 
     # Handles a train message which trains a new model
     def __handle_evaluate_message(self, msg: EvaluateMessage) -> None:
-        model = get_model(msg.options.targetModel)
+        model = get_model(msg.options)
         model.load_additional(msg.options.labels)
 
         result = model.eval_model(msg.evaluation_data)
@@ -96,7 +96,7 @@ class ConnectionHandler:
     
     # Handles a predict message which makes predictions to the given method names
     def __handle_predict_message(self, msg: PredictMessage) -> None:
-        model = get_model(msg.options.targetModel)
+        model = get_model(msg.options)
         model.load_model()
 
         prediction = model.predict(msg.prediction_data)
