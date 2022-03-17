@@ -90,9 +90,12 @@ class Options:
     identifier: str
     retrain: bool
 
-    def __init__(self, options: dict):
-        self.targetModel = SupportedModels(options['type'])
-        self.identifier = options['identifier']
+    def __init__(self, options: dict = dict()):
+        self.retrain = False
+        if 'type' in options:
+            self.targetModel = SupportedModels(options['type'])
+        if 'identifier' in options:
+            self.identifier = options['identifier']
         if 'retrain' in options:
             self.retrain = options['retrain']
         if 'labels' in options:

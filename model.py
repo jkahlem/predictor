@@ -1,4 +1,5 @@
 from enum import Enum
+from optparse import Option
 import os
 import shutil
 import threading
@@ -71,6 +72,7 @@ class ModelHolder():
         self.model_state = ModelState.NONE
         self.model = model
         self.model_identifier = ''
+        self.options = Options()
         self.mutex = threading.Lock()
         self.prediction_cache = dict()
 
@@ -88,7 +90,7 @@ class ModelHolder():
         if self.is_starting():
             self.mutex.release()
             return
-        elif self.model.exists():
+        elif self.model.exists() and not self.options.retrain:
             self.mutex.release()
             raise Exception('Cannot train model: Model is already trained')
 
