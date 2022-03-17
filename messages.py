@@ -1,7 +1,8 @@
 import json
 from enum import Enum
+from json import encoder
 
-from methods import Method, MethodContext
+from methods import Method, MethodContext, MethodEncoder
 
 class SupportedModels(str, Enum):
     ReturnTypesPrediction = "ReturnTypesPrediction"
@@ -13,7 +14,7 @@ class Message:
         self.header = header
         self.body = body
         if header is None and type(body) is dict:
-            body_as_str = json.dumps(body)
+            body_as_str = json.dumps(body, cls=MethodEncoder)
             self.header = MessageHeader(len(body_as_str), "application/json")
             self.body = body_as_str
 

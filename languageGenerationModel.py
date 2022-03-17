@@ -85,9 +85,17 @@ class MethodGenerationModel(model.Model):
         self.options = options
 
     # Makes predictions
-    def predict(self, predictionData: list[MethodContext]) -> list[str]:
+    def predict(self, predictionData: list[MethodContext]) -> list[MethodValues]:
+        results = list()
         parameters = self.__predict_parameter_list(predictionData)
-        returntypes = self.__predict_return_types(predictionData)
+        for par in parameters:
+            value = MethodValues()
+            for p in par.split(' '):
+                if len(p) == 0:
+                    continue
+                value.add_parameter(p, 'any')
+            results.append(value)
+        '''returntypes = self.__predict_return_types(predictionData)
         parametertypes = self.__predict_parameter_types(predictionData, parameters)
 
         paroffset = 0
@@ -102,8 +110,8 @@ class MethodGenerationModel(model.Model):
                 parameter.type = parametertypes[paroffset]
                 value.parameters.append(parameter)
                 paroffset += 1
-            result.append(value)
-        return result
+            result.append(value)'''
+        return results
     
     def __predict_parameter_list(self, data: list[MethodContext]) -> list[str]:
         inputs = list()
@@ -165,8 +173,8 @@ class MethodGenerationModel(model.Model):
     
     def __addMethodToFrame(self, method: Method, csv_string: StrBuilder):
         self.__addGenerateParametersTask(method, csv_string)
-        self.__addGenerateReturnTypeTask(method, csv_string)
-        self.__addGenerateParameterTypeTask(method, csv_string)
+        #self.__addGenerateReturnTypeTask(method, csv_string)
+        #self.__addGenerateParameterTypeTask(method, csv_string)
 
     def __addGenerateParametersTask(self, method: Method, csv_string: StrBuilder):
         self.__addTask(GenerateParametersTask, self.__getGenerateParametersInput(method.context), self.__parameterNames(method.values.parameters), csv_string)

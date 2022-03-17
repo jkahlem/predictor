@@ -7,7 +7,7 @@ import pandas as pd
 
 from config import get_script_dir, is_test_mode
 from messages import Options
-from methods import Method, MethodContext
+from methods import Method, MethodContext, MethodValues
 
 class ModelState(Enum):
     NONE = 1
@@ -35,7 +35,7 @@ class Model:
         pass
 
     # Makes predictions
-    def predict(self, predictionData: list[MethodContext]) -> list:
+    def predict(self, predictionData: list[MethodContext]) -> list[MethodValues]:
         pass
 
     # path addition for the cacheDir
@@ -155,7 +155,7 @@ class ModelHolder():
         return result
         
     # Makes predictions
-    def predict(self, methods: list[MethodContext]) -> list:
+    def predict(self, methods: list[MethodContext]) -> list[MethodValues]:
         self.mutex.acquire()
 
         if self.model is None:
