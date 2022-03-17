@@ -25,7 +25,14 @@ class MethodGenerationModel(model.Model):
             print('Initialize language modelling model without CUDA')
 
     def __t5Args(self) -> T5Args:
-        return T5Args(cache_dir=self.cache_dir_name(), output_dir=self.outputs_dir_name(), num_train_epochs=3)
+        model_options = self.options.model_options
+        args = T5Args(cache_dir=self.cache_dir_name(), output_dir=self.outputs_dir_name(), num_train_epochs=3)
+        if model_options.num_of_epochs > 0:
+            args.num_train_epochs = model_options.num_of_epochs
+        if model_options.batch_size > 0:
+            args.train_batch_size = model_options.batch_size
+            args.eval_batch_size = model_options.batch_size
+        return args
     
     def exists(self) -> bool:
         return exists(self.outputs_dir_name())

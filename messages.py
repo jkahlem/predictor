@@ -83,23 +83,43 @@ def __parse_header(fd) -> MessageHeader:
 
     return MessageHeader(length, mediaType)
 
+class ModelOptions:
+    batch_size: int
+    num_of_epochs: int
+
+    def __init__(self, options: dict = dict()):
+        self.batch_size = 0
+        self.num_of_epochs = 0
+        if 'batchSize' in options:
+            self.batch_size = options['batchSize']
+        if 'numOfEpochs' in options:
+            self.num_of_epochs = options['numOfEpochs']
+
+    def __str__(self) -> str:
+        return "Model Options..."
+
+    def __repr__(self) -> str:
+        return "Model Options..."
 
 class Options:
     labels: str
-    targetModel: SupportedModels
+    target_model: SupportedModels
     identifier: str
     retrain: bool
+    model_options: ModelOptions
 
     def __init__(self, options: dict = dict()):
         self.retrain = False
         if 'type' in options:
-            self.targetModel = SupportedModels(options['type'])
+            self.target_model = SupportedModels(options['type'])
         if 'identifier' in options:
             self.identifier = options['identifier']
         if 'retrain' in options:
             self.retrain = options['retrain']
         if 'labels' in options:
             self.labels = options['labels']
+        if 'modelOptions' in options:
+            self.model_options = ModelOptions(options['modelOptions'])
 
     def __str__(self) -> str:
         return "Options..."

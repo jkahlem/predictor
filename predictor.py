@@ -169,23 +169,23 @@ def get_model(options: Options) -> ModelHolder:
     global prediction_models, prediction_model_lock
     prediction_model_lock.acquire()
 
-    if options.targetModel in prediction_models and is_different_model_identifier(prediction_models[options.targetModel], options.identifier):
+    if options.target_model in prediction_models and is_different_model_identifier(prediction_models[options.target_model], options.identifier):
         # TODO: Unload the model
-        del prediction_models[options.targetModel]
+        del prediction_models[options.target_model]
 
-    if not options.targetModel in prediction_models:
-        if options.targetModel == SupportedModels.ReturnTypesPrediction:
-            prediction_models[options.targetModel] = ModelHolder(ReturnTypesPredictionModel())
-        elif options.targetModel == SupportedModels.MethodGenerator:
-            prediction_models[options.targetModel] = ModelHolder(MethodGenerationModel())
+    if not options.target_model in prediction_models:
+        if options.target_model == SupportedModels.ReturnTypesPrediction:
+            prediction_models[options.target_model] = ModelHolder(ReturnTypesPredictionModel())
+        elif options.target_model == SupportedModels.MethodGenerator:
+            prediction_models[options.target_model] = ModelHolder(MethodGenerationModel())
         else:
             prediction_model_lock.release()
-            raise Exception("Unsupported target model: " + options.targetModel)
+            raise Exception("Unsupported target model: " + options.target_model)
 
-    prediction_models[options.targetModel].set_options(options)
+    prediction_models[options.target_model].set_options(options)
 
     prediction_model_lock.release()
-    return prediction_models[options.targetModel]
+    return prediction_models[options.target_model]
 
 def is_different_model_identifier(model: ModelHolder, identifier: str) -> bool:
     return model.model_identifier != identifier
