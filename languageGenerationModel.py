@@ -1,26 +1,11 @@
-from io import StringIO
 import tempfile
 from messages import Options
 from methods import Method, MethodContext, MethodValues, Parameter
 from simpletransformers.t5 import T5Model, T5Args
-from transformers.training_args import TrainingArguments
 import model
-from util import copyTo
-from uuid import uuid4
 import pandas as pd
-from config import get_model_config, get_resource_path, get_script_dir, is_cuda_available
-from simpletransformers.language_modeling import LanguageModelingModel, LanguageModelingArgs
-from simpletransformers.language_generation import LanguageGenerationModel, LanguageGenerationArgs
-from simpletransformers.seq2seq import Seq2SeqModel, Seq2SeqArgs
-from tokenizers import Tokenizer
-from tokenizers.models import WordPiece
-from tokenizers.trainers import WordPieceTrainer
-from tokenizers.pre_tokenizers import Whitespace
-from transformers import T5Tokenizer, T5ForConditionalGeneration
-from transformers.trainer import Trainer
-from transformers.models.auto import AutoModel
-import torch
-import math
+from config import is_cuda_available
+from os.path import exists
 
 GenerateParametersTask = 'generate parameters'
 AssignReturnTypeTask = 'assign returntype'
@@ -41,6 +26,9 @@ class MethodGenerationModel(model.Model):
 
     def __t5Args(self) -> T5Args:
         return T5Args(cache_dir=self.cache_dir_name(), output_dir=self.outputs_dir_name(), num_train_epochs=3)
+    
+    def exists(self) -> bool:
+        return exists(self.outputs_dir_name())
 
     # initializes a new model
     def init_new_model(self) -> None:

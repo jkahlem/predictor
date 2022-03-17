@@ -58,6 +58,14 @@ class Model:
     def set_options(self, options: Options) -> None:
         pass
 
+    # Returns true if the model already exists (and therefore is for example not available for training if not retraining the model)
+    def exists(self) -> bool:
+        return False
+
+    # Removes all files which belong to this model
+    def remove_model(self) -> None:
+        pass
+
 class ModelHolder():
     def __init__(self, model: Model):
         self.model_state = ModelState.NONE
@@ -80,6 +88,9 @@ class ModelHolder():
         if self.is_starting():
             self.mutex.release()
             return
+        elif self.model.exists():
+            self.mutex.release()
+            raise Exception('Cannot train model: Model is already trained')
 
         self.__remove_previous_model_files()
         self.__init_new_model()

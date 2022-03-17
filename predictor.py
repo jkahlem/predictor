@@ -40,8 +40,9 @@ class ConnectionHandler:
             if e.errno != errno.ECONNRESET:
                 logging.exception("Error")
         except Exception:
+            print("Got exception!!")
             logging.exception("Error")
-            if msg != None and msg.body != None and msg.body is dict and 'id' in msg.body:
+            if msg is not None and msg.body is not None and 'id' in msg.body:
                 self.__send_error_msg(msg.body['id'], JsonRpcErrorCodes.ParseError, "Parser error")
         finally:
             print("connection closed")

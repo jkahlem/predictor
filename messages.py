@@ -16,13 +16,13 @@ class Message:
         if header is None and type(body) is dict:
             body_as_str = json.dumps(body, cls=MethodEncoder)
             self.header = MessageHeader(len(body_as_str), "application/json")
-            self.body = body_as_str
+            self.bodystr = body_as_str
 
     def __str__(self) -> str:
-        return str(self.header)+str(self.body)
+        return str(self.header)+str(self.bodystr)
 
     def __repr__(self) -> str:
-        return str(self.header)+str(self.body)
+        return str(self.header)+str(self.bodystr)
 
 # Defines the header of a stream message
 class MessageHeader:
@@ -88,10 +88,13 @@ class Options:
     labels: str
     targetModel: SupportedModels
     identifier: str
+    retrain: bool
 
     def __init__(self, options: dict):
         self.targetModel = SupportedModels(options['type'])
         self.identifier = options['identifier']
+        if 'retrain' in options:
+            self.retrain = options['retrain']
         if 'labels' in options:
             self.labels = options['labels']
 

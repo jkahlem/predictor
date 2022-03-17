@@ -8,6 +8,7 @@ from config import get_labels_path, get_model_config, is_cuda_available, is_test
 from simpletransformers.classification import ClassificationModel, ClassificationArgs
 from sklearn.metrics import f1_score, accuracy_score
 from io import StringIO
+from os.path import exists
 
 class ReturnTypesPredictionModel(model.Model):
     model: ClassificationModel
@@ -21,6 +22,9 @@ class ReturnTypesPredictionModel(model.Model):
             print('Initialize model with ' + str(self.labels.index.size) + ' label types and using CUDA')
         else:
             print('Initialize model with ' + str(self.labels.index.size) + ' label types without CUDA')
+
+    def exists(self) -> bool:
+        return exists(self.outputs_dir_name())
 
     # the arguments to use in this model
     def __args(self) -> ClassificationArgs:
