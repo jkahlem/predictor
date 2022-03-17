@@ -12,9 +12,11 @@ from os.path import exists
 
 class ReturnTypesPredictionModel(model.Model):
     model: ClassificationModel
+    options: Options
     def __init__(self):
         self.model = None
         self.labels = None
+        self.options = None
 
     # prints a message if cuda is used or not
     def __print_model_initialization(self) -> None:
@@ -28,7 +30,14 @@ class ReturnTypesPredictionModel(model.Model):
 
     # the arguments to use in this model
     def __args(self) -> ClassificationArgs:
-        return ClassificationArgs(cache_dir=self.cache_dir_name(), output_dir=self.outputs_dir_name())
+        model_options = self.options.model_options
+        args = ClassificationArgs(cache_dir=self.cache_dir_name(), output_dir=self.outputs_dir_name())
+        if model_options.num_of_epochs > 0:
+            args.num_train_epochs = model_options.num_of_epochs
+        if model_options.batch_size > 0:
+            args.train_batch_size = model_options.batch_size
+            args.eval_batch_size = model_options.batch_size
+        return args
     
     # initializes a new classification model
     def init_new_model(self) -> None:
@@ -57,6 +66,7 @@ class ReturnTypesPredictionModel(model.Model):
         self.__load_labels(labels)
     
     def set_options(self, options: Options) -> None:
+        self.options = options
         self.load_labels(self, StringIO(options.labels))
 
     # loads labels from a csv file
