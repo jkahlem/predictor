@@ -1,5 +1,5 @@
 from messages import Options
-from methods import Method, MethodContext
+from methods import Method, MethodContext, MethodValues
 import model
 import pandas as pd
 from util import copyTo
@@ -76,7 +76,7 @@ class ReturnTypesPredictionModel(model.Model):
         return result
 
     # Makes predictions for the expected return type of each of the given method names (uses cached values if exist)
-    def predict(self, methods: list[MethodContext]) -> list:
+    def predict(self, methods: list[MethodContext]) -> list[MethodValues]:
         if is_test_mode():
             # In test mode, return a list of random values
             types = list()
@@ -87,15 +87,17 @@ class ReturnTypesPredictionModel(model.Model):
         if self.model is None:
             return list()
  
-        inputs = list()
+        inputs: list[str] = list()
         for method in methods:
             inputs.append(method.methodName)
 
         predictions, _ = self.model.predict(inputs)
 
-        predicted_types = list()
+        predicted_types: list[MethodValues] = list()
         for p in predictions:
-            predicted_types.append(self.__get_type_by_label(p))
+            value = MethodValues()
+            value.returnType = self.__get_type_by_label(p)
+            predicted_types.append(value)
         return predicted_types
 
     # returns the type name for the given label
