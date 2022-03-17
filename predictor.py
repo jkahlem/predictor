@@ -6,7 +6,7 @@ import threading
 from enum import Enum
 from languageGenerationModel import MethodGenerationModel
 
-from messages import Message, EvaluateMessage, Options, PredictMessage, TrainMessage, parse_message_from_fd, SupportedModels
+from messages import ExistsMessage, Message, EvaluateMessage, Options, PredictMessage, TrainMessage, parse_message_from_fd, SupportedModels
 from config import get_port, get_script_dir, is_cuda_available, load_config
 from model import ModelHolder
 from returnTypesPredictionModel import ReturnTypesPredictionModel
@@ -58,6 +58,8 @@ class ConnectionHandler:
             self.__handle_evaluate_message(EvaluateMessage(msg))
         elif msg['method'] == "predict":
             self.__handle_predict_message(PredictMessage(msg))
+        elif msg['method'] == "exists":
+            self.__handle_exists_message(ExistsMessage(msg))
         else:
             self.__send_error_msg(msg['id'], JsonRpcErrorCodes.MethodNotFound, "Method not found: " +msg['method'])
 
@@ -67,9 +69,16 @@ class ConnectionHandler:
         model.create_new_model()
         model.train_model(msg.training_data)
 
-        msg = self.__create_jsonrpc_response(msg.id, '')
-        self.__send_str_to_conn(str(Message(None, msg)))
+        response = self.__create_jsonrpc_response(msg.id, '')
+        self.__send_str_to_conn(str(Message(None, response)))
 
+    # Handles a train message which trains a new model
+    def __handle_exists_message(self, msg: ExistsMessage) -> None:
+        model = get_model(msg.options)
+        result = model.exists()
+        response = self.__create_jsonrpc_response(msg.id, result)
+        self.__send_str_to_conn(str(Message(None, response)))
+    
     # Handles a train message which trains a new model
     def __handle_evaluate_message(self, msg: EvaluateMessage) -> None:
         model = get_model(msg.options)

@@ -211,3 +211,15 @@ class ModelHolder():
         self.model_identifier = options.identifier
 
         self.mutex.release()
+    
+    def exists(self) -> bool:
+        self.mutex.acquire()
+
+        if self.model is None:
+            self.mutex.release()
+            return
+
+        e = self.model.exists()
+
+        self.mutex.release()
+        return e

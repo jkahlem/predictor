@@ -137,10 +137,20 @@ class EvaluateMessage:
     def __repr__(self) -> str:
         return "Evaluation message..."
 
-
 class PredictMessage:
     def __init__(self, msg: dict):
-        self.prediction_data = [MethodContext(data) for data in msg['params']['predictionData']]# Todo: convert to MethodContext?
+        self.prediction_data = [MethodContext(data) for data in msg['params']['predictionData']]
+        self.options = Options(msg['params']['options'])
+        self.id = msg['id']
+
+    def __str__(self) -> str:
+        return "Predict message..."
+
+    def __repr__(self) -> str:
+        return "Predict message..."
+
+class ExistsMessage:
+    def __init__(self, msg: dict):
         self.options = Options(msg['params']['options'])
         self.id = msg['id']
 
