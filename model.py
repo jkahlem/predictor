@@ -176,21 +176,23 @@ class ModelHolder():
             return list()
 
         unpredicted = self.__get_unpredicted(methods)
-        self.__predict_and_save_in_cache(unpredicted)
+        result = self.__predict_and_save_in_cache(unpredicted)
 
-        result = list()
-        for m in methods:
-            result.append(self.prediction_cache[self.model.get_identifier_for_method(m)])
+        if len(result) != len(methods):
+            result = list()
+            for m in methods:
+                result.append(self.prediction_cache[self.model.get_identifier_for_method(m)])
 
         self.mutex.release()
         return result
 
     # makes predictions and saves them in the prediction cache
-    def __predict_and_save_in_cache(self, methods: list[MethodContext]):
+    def __predict_and_save_in_cache(self, methods: list[MethodContext]) -> list[MethodValues] :
         if len(methods) > 0:
             predictions = self.model.predict(methods)
             for i in range(len(predictions)):
                 self.prediction_cache[self.model.get_identifier_for_method(methods[i])] = predictions[i]
+            return predictions
 
     # returns a list of method names from the passed method names list which are not in the predictions cache
     def __get_unpredicted(self, methods: list[MethodContext]) -> list[MethodContext]:

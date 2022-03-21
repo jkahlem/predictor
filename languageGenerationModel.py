@@ -83,7 +83,7 @@ class MethodGenerationModel(model.Model):
                         parameter_type = p[0]
 
                     value.add_parameter(parameter_name, parameter_type)
-                results.append(value)
+            results.append(value)
         '''returntypes = self.__predict_return_types(predictionData)
         parametertypes = self.__predict_parameter_types(predictionData, parameters)
 
