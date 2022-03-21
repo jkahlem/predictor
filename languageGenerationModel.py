@@ -1,3 +1,4 @@
+from sqlite3 import paramstyle
 import tempfile
 from messages import Options
 from methods import Method, MethodContext, MethodValues, Parameter
@@ -26,7 +27,7 @@ class MethodGenerationModel(model.Model):
 
     def __t5Args(self) -> T5Args:
         model_options = self.options.model_options
-        args = T5Args(cache_dir=self.cache_dir_name(), output_dir=self.outputs_dir_name(), num_train_epochs=3)
+        args = T5Args(cache_dir=self.cache_dir_name(), output_dir=self.outputs_dir_name(), num_train_epochs=1)
         if model_options.num_of_epochs > 0:
             args.num_train_epochs = model_options.num_of_epochs
         if model_options.batch_size > 0:
@@ -73,11 +74,16 @@ class MethodGenerationModel(model.Model):
         parameters = self.__predict_parameter_list(predictionData)
         for par in parameters:
             value = MethodValues()
-            for p in par.split(' '):
-                if len(p) == 0:
-                    continue
-                value.add_parameter(p, 'any')
-            results.append(value)
+            if not (par == 'void' or par == 'void.'):
+                for p in par.split(','):
+                    p = p.strip().split(' ', maxsplit=1)
+                    parameter_type = 'any'
+                    parameter_name = p[-1]
+                    if len(p) == 2:
+                        parameter_type = p[0]
+
+                    value.add_parameter(parameter_name, parameter_type)
+                results.append(value)
         '''returntypes = self.__predict_return_types(predictionData)
         parametertypes = self.__predict_parameter_types(predictionData, parameters)
 
@@ -141,7 +147,6 @@ class MethodGenerationModel(model.Model):
         print("Convert list of " + str(len(data)) + " methods to frame ...")
         i = 0
         n = 1000
-        #frame = pd.DataFrame(columns=['prefix', 'input_text', 'target_text'])
         temp_fd = tempfile.TemporaryFile()
         for method in data:
             if i > n:
@@ -149,14 +154,25 @@ class MethodGenerationModel(model.Model):
                 n += 1000
             self.__addMethodToFrame(method, temp_fd)
             i += 1
-        print("read from csv string")
         temp_fd.seek(0)
         frame: pd.DataFrame = pd.read_csv(temp_fd, header=None, names=['prefix', 'input_text', 'target_text'], sep=";", na_filter=False)
+        temp_fd.close()
         print("Done.")
         return frame
     
     def __addMethodToFrame(self, method: Method, temp_fd):
-        self.__addGenerateParametersTask(method, temp_fd)
+        if not self.options.model_options.task_splitting:
+            output = ''
+            if len(method.values.parameters) == 0:
+                output = 'void'
+            else:
+                comma = ''
+                for par in method.values.parameters:
+                    output += comma + par.type + ' ' + par.name
+                    comma = ', '
+            self.__addTask(GenerateParametersTask, self.__getGenerateParametersInput(method.context), output, temp_fd)
+        else:
+            self.__addGenerateParametersTask(method, temp_fd)
         #self.__addGenerateReturnTypeTask(method, csv_string)
         #self.__addGenerateParameterTypeTask(method, csv_string)
 
@@ -189,7 +205,7 @@ class MethodGenerationModel(model.Model):
     def __addGenerateParameterTypeTask(self, method: Method, temp_fd):
         for par in method.values.parameters:
             self.__addTask(AssignParameterTypeTask, self.__getGenerateParameterTypeInput(method.context, par.name), par.type, temp_fd)
-            
+
     def __getGenerateParameterTypeInput(self, context: MethodContext, parName: str) -> str:
         static = ''
         if context.isStatic:

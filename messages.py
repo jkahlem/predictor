@@ -86,14 +86,18 @@ def __parse_header(fd) -> MessageHeader:
 class ModelOptions:
     batch_size: int
     num_of_epochs: int
+    task_splitting: bool
 
     def __init__(self, options: dict = dict()):
         self.batch_size = 0
         self.num_of_epochs = 0
+        self.task_splitting = False
         if 'batchSize' in options:
             self.batch_size = options['batchSize']
         if 'numOfEpochs' in options:
             self.num_of_epochs = options['numOfEpochs']
+        if 'taskSplitting' in options:
+            self.task_splitting = options['taskSplitting']
 
     def __str__(self) -> str:
         return "Model Options..."
