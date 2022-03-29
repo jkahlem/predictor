@@ -68,11 +68,10 @@ class MethodGenerationModel(model.Model):
         return_types = list()
         if tasks.return_type:
             return_types = self.__predict_return_types(prediction_data)
-        for i, par in enumerate(parameters):
+        for i, result in enumerate(parameters):
             value = MethodValues()
-            sentences = par.split('. returns')
-            print(par + ", " + str(len(sentences))+ ", '" + sentences[0] + "', '" + sentences[1] + "'")
-            if not (par == 'void' or par == 'void.'):
+            sentences = result.strip().split('. returns')
+            if not (sentences[0] == 'void' or sentences[0] == 'void.'):
                 for p in sentences[0].split(','):
                     p = p.strip().split(' ', maxsplit=1)
                     parameter_type = 'any'
