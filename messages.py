@@ -1,6 +1,7 @@
 import json
 from enum import Enum
 from json import encoder
+import typing
 
 from methods import Method, MethodContext, MethodEncoder
 
@@ -83,21 +84,56 @@ def __parse_header(fd) -> MessageHeader:
 
     return MessageHeader(length, mediaType)
 
+class CompoundTaskOptions:
+    with_return_type: bool
+    with_parameter_types: bool
+
+    def __init__(self, options: dict = dict()) -> None:
+        self.with_return_type = False
+        self.with_parameter_types = False
+
+        if 'withReturnType' in options:
+            self.with_return_type = options['withReturnType']
+        if 'withParameterTypes' in options:
+            self.with_parameter_types = options['withParameterTypes']
+
+class MethodGenerationTaskOptions:
+    parameter_names: CompoundTaskOptions
+    parameter_types: bool
+    return_type: bool
+
+    def __init__(self, options: dict = dict()):
+        self.parameter_names = CompoundTaskOptions()
+        self.parameter_types = False
+        self.return_type = False
+        if 'parameterNames' in options:
+            self.parameter_names = CompoundTaskOptions(options['parameterNames'])
+        if 'parameterTypes' in options:
+            self.parameter_types = options['parameterTypes']
+            #if self.parameter_names.with_parameter_types and self.parameter_types:
+            #    raise Exception('Cannot generate method with parameter types as compound task and as separate task.')
+            if self.parameter_types:
+                raise Exception('Parameter type generation as separate task is currently not supported.')
+        if 'returnType' in options:
+            self.return_type = options['returnType']
+            if self.parameter_names.with_return_type and self.return_type:
+                raise Exception('Cannot generate method with return type as compound task and as separate task.')
+
 class ModelOptions:
     batch_size: int
     num_of_epochs: int
-    task_splitting: bool
+    generation_tasks: MethodGenerationTaskOptions
 
     def __init__(self, options: dict = dict()):
         self.batch_size = 0
         self.num_of_epochs = 0
-        self.task_splitting = False
+        self.generation_tasks = MethodGenerationTaskOptions()
         if 'batchSize' in options:
             self.batch_size = options['batchSize']
         if 'numOfEpochs' in options:
             self.num_of_epochs = options['numOfEpochs']
-        if 'taskSplitting' in options:
-            self.task_splitting = options['taskSplitting']
+        if 'generationTasks' in options:
+            self.generation_tasks = MethodGenerationTaskOptions(options['generationTasks'])
 
     def __str__(self) -> str:
         return "Model Options..."

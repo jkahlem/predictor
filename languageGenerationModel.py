@@ -48,14 +48,6 @@ class MethodGenerationModel(model.Model):
     def load_model(self) -> None:
         self.model = T5Model('t5', self.outputs_dir_name(), args=self.__t5Args(), use_cuda=is_cuda_available())
 
-    # https://huggingface.co/blog/how-to-generate
-    # https://towardsdatascience.com/illustrated-guide-to-transformers-step-by-step-explanation-f74876522bc0
-    # https://link.springer.com/chapter/10.1007/978-3-030-91699-2_15
-    # https://ieeexplore.ieee.org/document/9402114
-    # https://jaketae.github.io/study/keyword-extraction/
-    # https://www.lighttag.io/blog/sequence-labeling-with-transformers/
-    # github.com/abhimishra91/transformers-tutorials/
-
     # Trains the model using the given training set
     def train_model(self, training_set: str) -> None:
         self.model.train_model(training_set)
@@ -69,13 +61,19 @@ class MethodGenerationModel(model.Model):
         self.options = options
 
     # Makes predictions
-    def predict(self, predictionData: list[MethodContext]) -> list[MethodValues]:
+    def predict(self, prediction_data: list[MethodContext]) -> list[MethodValues]:
+        tasks = self.options.model_options.generation_tasks
         results = list()
-        parameters = self.__predict_parameter_list(predictionData)
-        for par in parameters:
+        parameters = self.__predict_parameter_list(prediction_data)
+        return_types = list()
+        if tasks.return_type:
+            return_types = self.__predict_return_types(prediction_data)
+        for i, par in enumerate(parameters):
             value = MethodValues()
+            sentences = par.split('. returns')
+            print(par + ", " + str(len(sentences))+ ", '" + sentences[0] + "', '" + sentences[1] + "'")
             if not (par == 'void' or par == 'void.'):
-                for p in par.split(','):
+                for p in sentences[0].split(','):
                     p = p.strip().split(' ', maxsplit=1)
                     parameter_type = 'any'
                     parameter_name = p[-1]
@@ -83,23 +81,11 @@ class MethodGenerationModel(model.Model):
                         parameter_type = p[0]
 
                     value.add_parameter(parameter_name, parameter_type)
+            if len(return_types) == len(parameters):
+                value.returnType = return_types[i]
+            elif len(sentences) == 2 and tasks.parameter_names.with_return_type:
+                value.returnType = sentences[1]
             results.append(value)
-        '''returntypes = self.__predict_return_types(predictionData)
-        parametertypes = self.__predict_parameter_types(predictionData, parameters)
-
-        paroffset = 0
-        result: list[MethodValues] = list()
-        for i, _ in enumerate(predictionData):
-            value = MethodValues()
-            value.returnType = returntypes[i]
-            parameter_names = parameters[i].split(',')
-            for name in parameter_names:
-                parameter = Parameter()
-                parameter.name = name
-                parameter.type = parametertypes[paroffset]
-                value.parameters.append(parameter)
-                paroffset += 1
-            result.append(value)'''
         return results
     
     def __predict_parameter_list(self, data: list[MethodContext]) -> list[str]:
@@ -145,8 +131,7 @@ class MethodGenerationModel(model.Model):
     # converts the input data to a pandas frame
     def convert_methods_to_frame(self, data: list[Method]) -> pd.DataFrame:
         print("Convert list of " + str(len(data)) + " methods to frame ...")
-        i = 0
-        n = 1000
+        i, n = 0, 1000
         temp_fd = tempfile.TemporaryFile()
         for method in data:
             if i > n:
@@ -161,23 +146,15 @@ class MethodGenerationModel(model.Model):
         return frame
     
     def __addMethodToFrame(self, method: Method, temp_fd):
-        if not self.options.model_options.task_splitting:
-            output = ''
-            if len(method.values.parameters) == 0:
-                output = 'void'
-            else:
-                comma = ''
-                for par in method.values.parameters:
-                    output += comma + par.type + ' ' + par.name
-                    comma = ', '
-            self.__addTask(GenerateParametersTask, self.__getGenerateParametersInput(method.context), output, temp_fd)
-        else:
-            self.__addGenerateParametersTask(method, temp_fd)
-        #self.__addGenerateReturnTypeTask(method, csv_string)
-        #self.__addGenerateParameterTypeTask(method, csv_string)
+        tasks = self.options.model_options.generation_tasks
+        self.__addGenerateParametersTask(method, temp_fd)
+        if tasks.return_type:
+            self.__addGenerateReturnTypeTask(method, temp_fd)
+        if tasks.parameter_types:
+            self.__addGenerateParameterTypeTask(method, temp_fd)
 
     def __addGenerateParametersTask(self, method: Method, temp_fd):
-        self.__addTask(GenerateParametersTask, self.__getGenerateParametersInput(method.context), self.__parameterNames(method.values.parameters), temp_fd)
+        self.__addTask(GenerateParametersTask, self.__getGenerateParametersInput(method.context), self.__getCompoundTaskOutput(method.values), temp_fd)
     
     def __getGenerateParametersInput(self, context: MethodContext) -> str:
         static = ''
@@ -185,13 +162,25 @@ class MethodGenerationModel(model.Model):
             static = 'static '
         return 'method: ' + static + context.methodName + ". class: " + context.className + '.'
     
-    def __parameterNames(self, parameters: list[Parameter]) -> str:
-        if len(parameters) == 0:
-            return 'void'
-        output = ''
-        for par in parameters:
-            output += par.name
+    def __getCompoundTaskOutput(self, values: MethodValues) -> str:
+        tasks = self.options.model_options.generation_tasks.parameter_names
+        output = self.__getGenerateParametersOutput(values.parameters, tasks.with_parameter_types)
+        if tasks.with_return_type:
+            output += " returns " + values.returnType + "."
+
         return output
+
+    def __getGenerateParametersOutput(self, parameters: list[Parameter], with_types: bool = False) -> str:
+        if len(parameters) == 0:
+            return 'void.'
+        output = ''
+        for i, par in enumerate(parameters):
+            if i > 0:
+                output += ", "
+            if with_types:
+                output += par.type + " "
+            output += par.name
+        return output + "."
 
     def __addGenerateReturnTypeTask(self, method: Method, temp_fd):
         self.__addTask(AssignReturnTypeTask, self.__getGenerateReturnTypeInput(method.context), method.values.returnType, temp_fd)
@@ -213,17 +202,5 @@ class MethodGenerationModel(model.Model):
         return 'method: ' + static + context.methodName + ". class: " + context.className + '. parameter: ' + parName
 
     def __addTask(self, prefix, input_text, target_text, temp_fd):
-        #frame.append(pd.Series({'prefix': prefix, 'input_text': input_text, 'target_text': target_text}), ignore_index=True)
         s: str = prefix + ";" + input_text + ";" + target_text + "\n"
         temp_fd.write(s.encode('utf-8'))
-
-## Type assignment task
-# prefix: "type assignment"
-# input_text: "name: <parameter name> context: <types in context>"
-# target_text: "<expected parameter type>" OR "0" 
-#   - "0" if type is not available in context. As its a number, it is not allowed as a type in Java and therefore can be used without collision.
-#
-## Type classification task
-#
-# prefix: "type classification"
-# input_text: "<parameter name>"

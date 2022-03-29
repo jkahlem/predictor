@@ -10,7 +10,6 @@ from messages import ExistsMessage, Message, EvaluateMessage, Options, PredictMe
 from config import get_port, get_script_dir, is_cuda_available, load_config
 from model import ModelHolder
 from returnTypesPredictionModel import ReturnTypesPredictionModel
-from sentenceTransformer import testSentenceTransformer
 
 class JsonRpcErrorCodes(str, Enum):
     ParseError = -32700
@@ -40,7 +39,6 @@ class ConnectionHandler:
             if e.errno != errno.ECONNRESET:
                 logging.exception("Error")
         except Exception:
-            print("Got exception!!")
             logging.exception("Error")
             if msg is not None and msg.body is not None and 'id' in msg.body:
                 self.__send_error_msg(msg.body['id'], JsonRpcErrorCodes.ParseError, "Parser error")
@@ -61,7 +59,7 @@ class ConnectionHandler:
         elif msg['method'] == "exists":
             self.__handle_exists_message(ExistsMessage(msg))
         else:
-            self.__send_error_msg(msg['id'], JsonRpcErrorCodes.MethodNotFound, "Method not found: " +msg['method'])
+            self.__send_error_msg(msg['id'], JsonRpcErrorCodes.MethodNotFound, "Method not found: '" + msg['method'] + "'")
 
     # Handles a train message which trains a new model
     def __handle_train_message(self, msg: TrainMessage) -> None:
