@@ -1,7 +1,5 @@
 import json
 from enum import Enum
-from json import encoder
-import typing
 
 from methods import Method, MethodContext, MethodEncoder
 

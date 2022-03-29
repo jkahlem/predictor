@@ -10,13 +10,7 @@ from messages import ExistsMessage, Message, EvaluateMessage, Options, PredictMe
 from config import get_port, get_script_dir, is_cuda_available, load_config
 from model import ModelHolder
 from returnTypesPredictionModel import ReturnTypesPredictionModel
-
-class JsonRpcErrorCodes(str, Enum):
-    ParseError = -32700
-    InvalidRequest = -32600
-    MethodNotFound = -32602
-    InternalError = -32603
-    ServerError = -32000
+from jsonrpcErrorCodes import JsonRpcErrorCodes
 
 # Handles a connection for rpc messages
 class ConnectionHandler:
@@ -49,7 +43,7 @@ class ConnectionHandler:
     # handles a message
     def __handle_message(self, msg: dict) -> None:
         print("Received message: " + msg['method'])
-        
+
         if msg['method'] == "train":
             self.__handle_train_message(TrainMessage(msg))
         elif msg['method'] == "evaluate":
@@ -128,7 +122,7 @@ class ConnectionHandler:
     # Sends a jsonrpc response error with the given message
     def __send_error_msg(self, id, code, msg: str) -> None:
         print("Send error message with code " + str(code) + ": " + msg)
-        response_error = dict(jsonrpc="2.0", id=id, code=code, msg=msg)
+        response_error = dict(jsonrpc="2.0", id=id, error=dict(code=code, message=msg))
         self.__send_str_to_conn(str(Message(None, response_error)))
 
     # Sends a plain string to the connection

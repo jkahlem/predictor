@@ -1,5 +1,5 @@
 import json
-
+from jsonrpcErrorCodes import JsonRpcErrorCodes
 
 class Parameter:
     name: str
@@ -76,4 +76,6 @@ class MethodEncoder(json.JSONEncoder):
             return dict({'returnType': obj.returnType, 'parameters': obj.parameters})
         if isinstance(obj, Parameter):
             return dict({'name': obj.name, 'type': obj.type})
+        if isinstance(obj, JsonRpcErrorCodes):
+            return obj.value
         return json.JSONEncoder.default(self, obj)
