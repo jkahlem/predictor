@@ -96,7 +96,7 @@ class MethodGenerationModel(model.Model):
                     else:
                         value.returnType = return_types[i]
                 elif len(sentences) == 2 and tasks.parameter_names.with_return_type:
-                    value.returnType = sentences[1]
+                    value.returnType = sentences[1].strip()
                 values.append(value)
             results.append(values)
         return results
