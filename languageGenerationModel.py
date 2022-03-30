@@ -1,5 +1,6 @@
 from sqlite3 import paramstyle
 import tempfile
+import typing
 from messages import Options
 from methods import Method, MethodContext, MethodValues, Parameter
 from simpletransformers.t5 import T5Model, T5Args
@@ -33,6 +34,11 @@ class MethodGenerationModel(model.Model):
         if model_options.batch_size > 0:
             args.train_batch_size = model_options.batch_size
             args.eval_batch_size = model_options.batch_size
+        if model_options.max_sequence_length > 0:
+            args.max_seq_length = model_options.max_sequence_length
+        if model_options.num_return_sequences > 1:
+            args.num_return_sequences = model_options.num_return_sequences
+            args.do_sample = True
         return args
     
     def exists(self) -> bool:
@@ -61,39 +67,47 @@ class MethodGenerationModel(model.Model):
         self.options = options
 
     # Makes predictions
-    def predict(self, prediction_data: list[MethodContext]) -> list[MethodValues]:
+    def predict(self, prediction_data: list[MethodContext]) -> list[list[MethodValues]]:
         tasks = self.options.model_options.generation_tasks
         results = list()
         parameters = self.__predict_parameter_list(prediction_data)
         return_types = list()
         if tasks.return_type:
             return_types = self.__predict_return_types(prediction_data)
-        for i, result in enumerate(parameters):
-            value = MethodValues()
-            sentences = result.strip().split('. returns')
-            if not (sentences[0] == 'void' or sentences[0] == 'void.'):
-                for p in sentences[0].split(','):
-                    p = p.strip().split(' ', maxsplit=1)
-                    parameter_type = 'any'
-                    parameter_name = p[-1]
-                    if len(p) == 2:
-                        parameter_type = p[0]
+        for i, generated_parameters in enumerate(parameters):
+            values = list()
+            if not isinstance(generated_parameters, list):
+                generated_parameters = [generated_parameters]
+            for j, parlist in enumerate(generated_parameters):
+                value = MethodValues()
+                sentences = parlist.strip().split('. returns')
+                if not (sentences[0] == 'void' or sentences[0] == 'void.'):
+                    for p in sentences[0].split(','):
+                        p = p.strip().split(' ', maxsplit=1)
+                        parameter_type = 'any'
+                        parameter_name = p[-1]
+                        if len(p) == 2:
+                            parameter_type = p[0]
 
-                    value.add_parameter(parameter_name, parameter_type)
-            if len(return_types) == len(parameters):
-                value.returnType = return_types[i]
-            elif len(sentences) == 2 and tasks.parameter_names.with_return_type:
-                value.returnType = sentences[1]
-            results.append(value)
+                        value.add_parameter(parameter_name, parameter_type)
+                if len(return_types) == len(parameters):
+                    if isinstance(return_types[i], list):
+                        value.returnType = return_types[i][j]
+                    else:
+                        value.returnType = return_types[i]
+                elif len(sentences) == 2 and tasks.parameter_names.with_return_type:
+                    value.returnType = sentences[1]
+                values.append(value)
+            results.append(values)
         return results
     
-    def __predict_parameter_list(self, data: list[MethodContext]) -> list[str]:
+    def __predict_parameter_list(self, data: list[MethodContext]) -> list:
         inputs = list()
         for method in data:
             inputs.append(GenerateParametersTask + ': ' + self.__getGenerateParametersInput(method))
         return self.model.predict(inputs)
     
-    def __predict_return_types(self, data: list[MethodContext]) -> list[str]:
+    def __predict_return_types(self, data: list[MethodContext]) -> list:
         inputs = list()
         for method in data:
             inputs.append(AssignReturnTypeTask + ': ' + self.__getGenerateReturnTypeInput(method))
