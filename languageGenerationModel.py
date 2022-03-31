@@ -173,7 +173,10 @@ class MethodGenerationModel(model.Model):
         static = ''
         if context.isStatic:
             static = 'static '
-        return 'method: ' + static + context.methodName + ". class: " + context.className + '.'
+        typeList = ''
+        if context.types is not None and len(context.types) > 0:
+            typeList = " context: "+ ", ".join(self.options.model_options.default_context + context.types) + "."
+        return 'method: ' + static + context.methodName + ". class: " + context.className + '.' + typeList
     
     def __getCompoundTaskOutput(self, values: MethodValues) -> str:
         tasks = self.options.model_options.generation_tasks.parameter_names

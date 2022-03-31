@@ -123,6 +123,7 @@ class ModelOptions:
     generation_tasks: MethodGenerationTaskOptions
     max_sequence_length: int
     num_return_sequences: int
+    default_context: list[str]
 
     def __init__(self, options: dict = dict()):
         self.batch_size = 0
@@ -130,6 +131,7 @@ class ModelOptions:
         self.max_sequence_length = 0
         self.num_return_sequences = 0
         self.generation_tasks = MethodGenerationTaskOptions()
+        self.default_context = list()
         if 'batchSize' in options:
             self.batch_size = options['batchSize']
         if 'numOfEpochs' in options:
@@ -140,6 +142,8 @@ class ModelOptions:
             self.num_return_sequences = options['numReturnSequences']        
         if 'generationTasks' in options:
             self.generation_tasks = MethodGenerationTaskOptions(options['generationTasks'])
+        if 'defaultContext' in options:
+            self.default_context = options['defaultContext']
 
     def __str__(self) -> str:
         return "Model Options..."
