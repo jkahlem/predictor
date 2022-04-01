@@ -137,13 +137,6 @@ class MethodGenerationModel(model.Model):
     # the main directory for this model
     def __parent_dir(self) -> str:
         return 'models/language_generation/'+self.options.identifier+'/'
-    
-    # Returns a method identifier for the method for caching. Methods with the same identifier won't be predicted again.
-    def get_identifier_for_method(self, method: MethodContext) -> str:
-        static = ''
-        if method.is_static:
-            static = 'static,'
-        return static + method.className + "," + method.methodName
 
     # converts the input data to a pandas frame
     def convert_methods_to_frame(self, data: list[Method]) -> pd.DataFrame:
@@ -215,3 +208,8 @@ class MethodGenerationModel(model.Model):
     def __addTask(self, prefix, input_text, target_text, temp_fd):
         s: str = prefix + ";" + input_text + ";" + target_text + "\n"
         temp_fd.write(s.encode('utf-8'))
+
+    # method generation is not cacheable (or rather it makes no sense to cache it) as the input sequences get very complex
+    # (due to class name, context types, static state etc.) and it happens very rarely that predictions on the same input are requested.
+    def is_cacheable(self) -> None:
+        return False

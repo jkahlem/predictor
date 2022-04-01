@@ -158,3 +158,6 @@ class ReturnTypesPredictionModel(model.Model):
     # returns a method identifier for the method for caching. Methods with the same identifier won't be predicted again.
     def get_identifier_for_method(self, method: MethodContext) -> str:
         return method.methodName
+    
+    def is_cacheable(self) -> None:
+        return True

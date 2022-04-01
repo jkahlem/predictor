@@ -67,6 +67,10 @@ class Model:
     def remove_model(self) -> None:
         pass
 
+    # returns true if the results of the model can/should be saved to a cache
+    def is_cacheable(self) -> None:
+        return False
+
 class ModelHolder():
     def __init__(self, model: Model):
         self.model_state = ModelState.NONE
@@ -178,7 +182,7 @@ class ModelHolder():
         unpredicted = self.__get_unpredicted(methods)
         result = self.__predict_and_save_in_cache(unpredicted)
 
-        if len(result) != len(methods):
+        if self.model.is_cacheable() and len(result) != len(methods):
             result = list()
             for m in methods:
                 result.append(self.prediction_cache[self.model.get_identifier_for_method(m)])
@@ -190,12 +194,16 @@ class ModelHolder():
     def __predict_and_save_in_cache(self, methods: list[MethodContext]) -> list[MethodValues] :
         if len(methods) > 0:
             predictions = self.model.predict(methods)
-            for i in range(len(predictions)):
-                self.prediction_cache[self.model.get_identifier_for_method(methods[i])] = predictions[i]
+            if self.model.is_cacheable():
+                for i in range(len(predictions)):
+                    self.prediction_cache[self.model.get_identifier_for_method(methods[i])] = predictions[i]
             return predictions
 
     # returns a list of method names from the passed method names list which are not in the predictions cache
     def __get_unpredicted(self, methods: list[MethodContext]) -> list[MethodContext]:
+        if not self.model.is_cacheable():
+            return methods
+
         unpredicted = list()
         for m in methods:
             if not self.model.get_identifier_for_method(m) in self.prediction_cache:
