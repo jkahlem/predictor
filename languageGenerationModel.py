@@ -1,7 +1,7 @@
 from sqlite3 import paramstyle
 import tempfile
 import typing
-from messages import Options
+from messages import MethodGenerationTaskOptions, Options
 from methods import Method, MethodContext, MethodValues, Parameter
 from simpletransformers.t5 import T5Model, T5Args
 import model
@@ -68,38 +68,60 @@ class MethodGenerationModel(model.Model):
 
     # Makes predictions
     def predict(self, prediction_data: list[MethodContext]) -> list[list[MethodValues]]:
-        tasks = self.options.model_options.generation_tasks
-        results = list()
         parameters = self.__predict_parameter_list(prediction_data)
-        return_types = list()
-        if tasks.return_type:
+        return_types = list() # if return type prediction is separate task...
+        if self.__generation_tasks().return_type:
             return_types = self.__predict_return_types(prediction_data)
-        for i, generated_parameters in enumerate(parameters):
-            values = list()
+        return self.__map_predictions_to_method_values(parameters, return_types)
+    
+    def __map_predictions_to_method_values(self, predictions: list, return_types: list) -> list[list[MethodValues]]:
+        results = list()
+        # iterate through result. result might be list[str] or list[list[str]] depending on num return sequences. 
+        for i, generated_parameters in enumerate(predictions):
+            value_suggestions = list()
+            suggestions = set()
             if not isinstance(generated_parameters, list):
+                # in case of a single generated sequence, wrap it in a list
                 generated_parameters = [generated_parameters]
+
+            # iterate through the predicted sequences.
             for j, parlist in enumerate(generated_parameters):
                 value = MethodValues()
-                sentences = parlist.strip().split('. returns')
-                if not (sentences[0] == 'void' or sentences[0] == 'void.'):
-                    for p in sentences[0].split(','):
-                        p = p.strip().split(' ', maxsplit=1)
-                        parameter_type = 'any'
-                        parameter_name = p[-1]
-                        if len(p) == 2:
-                            parameter_type = p[0]
-
-                        value.add_parameter(parameter_name, parameter_type)
-                if len(return_types) == len(parameters):
+                sentences = parlist.strip().split('. returns:')
+                self.__add_parameters_to_method_values(value, sentences[0])
+                # if return types are predicted in a separate task
+                if len(return_types) == len(predictions):
+                    # and num return sequences > 1
                     if isinstance(return_types[i], list):
                         value.returnType = return_types[i][j]
-                    else:
+                    else: # otherwise just pick that return type
                         value.returnType = return_types[i]
-                elif len(sentences) == 2 and tasks.parameter_names.with_return_type:
+                # else if return type prediction is a compound task, then pick the second sentence for it.
+                elif len(sentences) == 2 and self.__generation_tasks().parameter_names.with_return_type:
                     value.returnType = sentences[1].strip()
-                values.append(value)
-            results.append(values)
-        return results
+                # get the hash for the current state to prevent adding the same suggestions multiple times
+                value_hash = value.current_state_hash()
+                if not value_hash in suggestions:
+                    value_suggestions.append(value)
+                    suggestions.add(value_hash)
+            results.append(value_suggestions)
+    
+    def __add_parameters_to_method_values(self, value: MethodValues, parlist: str) -> MethodValues:
+        # the sequence should be a parameter list (<type> <name>, <type> <name>. returns: <type>.)
+        # the parameter list can be "void."
+        if not (parlist == 'void' or parlist == 'void.'):
+            # if the parameter list is not empty, iterate through the parameter list
+            for p in parlist.split(','):
+                # split the return type by the first space.
+                # TODO: If some different split thing is implemented, this won't be enough.
+                p = p.strip().split(' ', maxsplit=1)
+                parameter_type = 'Object'
+                parameter_name = p[-1]
+                # if the parameter can be splitted into two values, there is also a type predicted.
+                if len(p) == 2:
+                    parameter_type = p[0]
+
+                value.add_parameter(parameter_name, parameter_type)
     
     def __predict_parameter_list(self, data: list[MethodContext]) -> list:
         inputs = list()
@@ -176,7 +198,7 @@ class MethodGenerationModel(model.Model):
         tasks = self.options.model_options.generation_tasks.parameter_names
         output = self.__getGenerateParametersOutput(values.parameters, tasks.with_parameter_types)
         if tasks.with_return_type:
-            output += " returns " + values.returnType + "."
+            output += " returns: " + values.returnType + "."
 
         return output
 
@@ -208,6 +230,9 @@ class MethodGenerationModel(model.Model):
     def __addTask(self, prefix, input_text, target_text, temp_fd):
         s: str = prefix + ";" + input_text + ";" + target_text + "\n"
         temp_fd.write(s.encode('utf-8'))
+    
+    def __generation_tasks(self) -> MethodGenerationTaskOptions:
+        return self.options.model_options.generation_tasks
 
     # method generation is not cacheable (or rather it makes no sense to cache it) as the input sequences get very complex
     # (due to class name, context types, static state etc.) and it happens very rarely that predictions on the same input are requested.

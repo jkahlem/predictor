@@ -5,13 +5,15 @@ class Parameter:
     name: str
     type: str
     def __init__(self, parameter: dict = dict()) -> None:
+        self.name = ''
+        self.type = ''
         if 'name' in parameter:
             self.name = parameter['name']
         if 'type' in parameter:
             self.type = parameter['type']
 
     def __str__(self) -> str:
-        pass
+        return self.type + ' ' + self.name
 
     def __repr__(self) -> str:
         pass
@@ -56,6 +58,9 @@ class MethodValues:
 
     def __repr__(self) -> str:
         pass
+
+    def current_state_hash(self) -> int:
+        return hash((self.returnType, ", ".join([str(x) for x in self.parameters])))
 
 class Method:
     context: MethodContext
