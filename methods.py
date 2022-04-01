@@ -18,12 +18,12 @@ class Parameter:
 
 class MethodContext:
     className: str
-    isStatic: bool
+    is_static: bool
     methodName: str
     types: list[str]
     def __init__(self, context: dict = dict()) -> None:
         self.className = context['className']
-        self.isStatic = context['isStatic']
+        self.is_static = context['isStatic']
         self.methodName = context['methodName']
         self.types = context['types']
 

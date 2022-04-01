@@ -120,7 +120,11 @@ class MethodGenerationModel(model.Model):
             for par in parameters:
                 inputs.append(AssignParameterTypeTask + ': ' + self.__getGenerateParameterTypeInput(method, par))
         return self.model.predict(inputs)
-        
+    
+    def __prefix(self, task_type: str, context: MethodContext) -> str:
+        if context.is_static:
+            return task_type + " static"
+        return task_type
 
     # path addition for the cacheDir
     def cache_dir_name(self) -> str:
@@ -137,7 +141,7 @@ class MethodGenerationModel(model.Model):
     # Returns a method identifier for the method for caching. Methods with the same identifier won't be predicted again.
     def get_identifier_for_method(self, method: MethodContext) -> str:
         static = ''
-        if method.isStatic:
+        if method.is_static:
             static = 'static,'
         return static + method.className + "," + method.methodName
 
@@ -167,16 +171,13 @@ class MethodGenerationModel(model.Model):
             self.__addGenerateParameterTypeTask(method, temp_fd)
 
     def __addGenerateParametersTask(self, method: Method, temp_fd):
-        self.__addTask(GenerateParametersTask, self.__getGenerateParametersInput(method.context), self.__getCompoundTaskOutput(method.values), temp_fd)
+        self.__addTask(self.__prefix(GenerateParametersTask, method.context), self.__getGenerateParametersInput(method.context), self.__getCompoundTaskOutput(method.values), temp_fd)
     
     def __getGenerateParametersInput(self, context: MethodContext) -> str:
-        static = ''
-        if context.isStatic:
-            static = 'static '
         typeList = ''
         if context.types is not None and len(context.types) > 0:
             typeList = " context: "+ ", ".join(self.options.model_options.default_context + context.types) + "."
-        return 'method: ' + static + context.methodName + ". class: " + context.className + '.' + typeList
+        return 'method: ' + context.methodName + ". class: " + context.className + '.' + typeList
     
     def __getCompoundTaskOutput(self, values: MethodValues) -> str:
         tasks = self.options.model_options.generation_tasks.parameter_names
@@ -199,23 +200,17 @@ class MethodGenerationModel(model.Model):
         return output + "."
 
     def __addGenerateReturnTypeTask(self, method: Method, temp_fd):
-        self.__addTask(AssignReturnTypeTask, self.__getGenerateReturnTypeInput(method.context), method.values.returnType, temp_fd)
+        self.__addTask(self.__prefix(AssignReturnTypeTask, method.context), self.__getGenerateReturnTypeInput(method.context), method.values.returnType, temp_fd)
 
     def __getGenerateReturnTypeInput(self, context: MethodContext) -> str:
-        static = ''
-        if context.isStatic:
-            static = 'static '
-        return 'method: ' + static + context.methodName + ". class: " + context.className + '.'
+        return 'method: ' + context.methodName + ". class: " + context.className + '.'
 
     def __addGenerateParameterTypeTask(self, method: Method, temp_fd):
         for par in method.values.parameters:
-            self.__addTask(AssignParameterTypeTask, self.__getGenerateParameterTypeInput(method.context, par.name), par.type, temp_fd)
+            self.__addTask(self.__prefix(AssignParameterTypeTask, method.context), self.__getGenerateParameterTypeInput(method.context, par.name), par.type, temp_fd)
 
     def __getGenerateParameterTypeInput(self, context: MethodContext, parName: str) -> str:
-        static = ''
-        if context.isStatic:
-            static = 'static '
-        return 'method: ' + static + context.methodName + ". class: " + context.className + '. parameter: ' + parName
+        return 'method: ' + context.methodName + ". class: " + context.className + '. parameter: ' + parName
 
     def __addTask(self, prefix, input_text, target_text, temp_fd):
         s: str = prefix + ";" + input_text + ";" + target_text + "\n"

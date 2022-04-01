@@ -3,7 +3,6 @@ import logging
 import errno
 import os
 import threading
-from enum import Enum
 from languageGenerationModel import MethodGenerationModel
 
 from messages import ExistsMessage, Message, EvaluateMessage, Options, PredictMessage, TrainMessage, parse_message_from_fd, SupportedModels
