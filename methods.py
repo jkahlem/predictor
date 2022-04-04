@@ -4,13 +4,17 @@ from jsonrpcErrorCodes import JsonRpcErrorCodes
 class Parameter:
     name: str
     type: str
+    is_array: bool
     def __init__(self, parameter: dict = dict()) -> None:
         self.name = ''
         self.type = ''
+        self.is_array = False
         if 'name' in parameter:
             self.name = parameter['name']
         if 'type' in parameter:
             self.type = parameter['type']
+        if 'isArray' in parameter:
+            self.is_array = parameter['isArray']
 
     def __str__(self) -> str:
         return self.type + ' ' + self.name
@@ -50,7 +54,11 @@ class MethodValues:
     def add_parameter(self, name: str, type: str) -> None:
         p = Parameter()
         p.name = name
-        p.type = type
+        if type.endswith('[]'):
+            p.is_array = True
+            p.type = type[:-2]
+        else:
+            p.type = type
         self.parameters.append(p)
 
     def __str__(self) -> str:
