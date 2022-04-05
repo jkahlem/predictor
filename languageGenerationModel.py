@@ -69,26 +69,33 @@ class MethodGenerationModel(model.Model):
     # Makes predictions
     def predict(self, prediction_data: list[MethodContext]) -> list[list[MethodValues]]:
         parameters = self.__predict_parameter_list(prediction_data)
-        return_types = list() # if return type prediction is separate task...
+
+        # predict return types in separate task if configured
+        return_types = list()
         if self.__generation_tasks().return_type:
             return_types = self.__predict_return_types(prediction_data)
-        return self.__map_predictions_to_method_values(parameters, return_types)
+
+        # predict parameter types in separate task if configured
+        parameter_types = list()
+        if self.__generation_tasks().parameter_types:
+            parameter_types = self.__predict_parameter_types(prediction_data, parameters)
+
+        return self.__map_predictions_to_method_values(parameters, return_types, parameter_types)
     
-    def __map_predictions_to_method_values(self, predictions: list, return_types: list) -> list[list[MethodValues]]:
+    def __map_predictions_to_method_values(self, predictions: list[list[str]], return_types: list[list[str]], parameter_types: list[list[list[str]]]) -> list[list[MethodValues]]:
         results = list()
         # iterate through result. result might be list[str] or list[list[str]] depending on num return sequences. 
         for i, generated_parameters in enumerate(predictions):
             value_suggestions = list()
             suggestions = set()
-            if not isinstance(generated_parameters, list):
-                # in case of a single generated sequence, wrap it in a list
-                generated_parameters = [generated_parameters]
 
             # iterate through the predicted sequences.
             for j, parlist in enumerate(generated_parameters):
                 value = MethodValues()
                 sentences = parlist.strip().split('. returns:')
-                self.__add_parameters_to_method_values(value, sentences[0])
+                par_types = parameter_types[i][j] if len(parameter_types) > 0 else None
+                self.__add_parameters_to_method_values(value, sentences[0], par_types)
+
                 # if return types are predicted in a separate task
                 if len(return_types) == len(predictions):
                     # and num return sequences > 1
@@ -99,49 +106,89 @@ class MethodGenerationModel(model.Model):
                 # else if return type prediction is a compound task, then pick the second sentence for it.
                 elif len(sentences) == 2 and self.__generation_tasks().parameter_names.with_return_type:
                     value.set_return_type(sentences[1])
+
                 # get the hash for the current state to prevent adding the same suggestions multiple times
                 value_hash = value.current_state_hash()
                 if not value_hash in suggestions:
                     value_suggestions.append(value)
                     suggestions.add(value_hash)
+
             results.append(value_suggestions)
         return results
     
-    def __add_parameters_to_method_values(self, value: MethodValues, parlist: str) -> MethodValues:
-        # the sequence should be a parameter list (<type> <name>, <type> <name>. returns: <type>.)
+    def __add_parameters_to_method_values(self, value: MethodValues, parlist: str, types: list[str]) -> MethodValues:
+        # the sequence should be a parameter list (<type>-<name>, <type>-<name>. returns: <type>.)
         # the parameter list can be "void."
         if not (parlist == 'void' or parlist == 'void.'):
             # if the parameter list is not empty, iterate through the parameter list
-            for p in parlist.split(','):
-                # split the return type by the first space.
+            for i, p in enumerate(parlist.split(',')):
                 p = p.split('-', maxsplit=1)
                 parameter_type = 'Object'
                 parameter_name = p[-1]
-                # if the parameter can be splitted into two values, there is also a type predicted.
-                if len(p) == 2:
+
+                # if types are predicted in a separate task, use that type
+                if types is not None and len(types) > 0:
+                    parameter_type = types[i]
+                # otherwise if the parameter can be splitted into two values, the first value is the type.
+                elif len(p) == 2:
                     parameter_type = p[0]
 
                 value.add_parameter(parameter_name.strip(), parameter_type.strip())
+
+    # wraps the model output in list, even if only one suggestion exists to make the code easier  
+    def __wrap_model_output_in_lists(predictions: list) -> list[list[str]]:
+        for i in enumerate(predictions):
+            if not isinstance(predictions[i], list):
+                predictions[i] = [predictions[i]]
+        return predictions
     
-    def __predict_parameter_list(self, data: list[MethodContext]) -> list:
+    def __predict_parameter_list(self, data: list[MethodContext]) -> list[list[str]]:
         inputs = list()
         for method in data:
             inputs.append(GenerateParametersTask + ': ' + self.__getGenerateParametersInput(method))
-        return self.model.predict(inputs)
+        return self.__wrap_model_output_in_lists(self.model.predict(inputs))
     
-    def __predict_return_types(self, data: list[MethodContext]) -> list:
+    def __predict_return_types(self, data: list[MethodContext]) -> list[list[str]]:
         inputs = list()
         for method in data:
             inputs.append(AssignReturnTypeTask + ': ' + self.__getGenerateReturnTypeInput(method))
-        return self.model.predict(inputs)
+        return self.__wrap_model_output_in_lists(self.model.predict(inputs))
 
-    def __predict_parameter_types(self, data: list[MethodContext], parameterLists: list[str]) -> list[str]:
+    # parameter_names can be a list of single predictions or a list of suggestion (multiple predictions per input)
+    # the return value is structured as: list[MethodIndex][SuggestionIndex][ParameterIndex]
+    # therefore list[x][y][z] returns the type for the z-th parameter in the y-th suggestion for the x-th method.
+    def __predict_parameter_types(self, data: list[MethodContext], parameter_names: list[list[str]]) -> list[list[list[str]]]:
         inputs = list()
         for i, method in enumerate(data):
-            parameters = parameterLists[i].split(',')
-            for par in parameters:
-                inputs.append(AssignParameterTypeTask + ': ' + self.__getGenerateParameterTypeInput(method, par))
-        return self.model.predict(inputs)
+            parameter_suggestions = parameter_names[i]
+            for suggestion in parameter_suggestions:
+                parameters = suggestion.split(',')
+                for par in parameters:
+                    inputs.append(AssignParameterTypeTask + ': ' + self.__getGenerateParameterTypeInput(method, par))
+        
+        # to make things not more complicated, parameter type predictions should have only one suggestion
+        t = self.model.args.num_return_sequences
+        self.model.args.num_return_sequences = 1
+        predictions = self.model.predict(inputs)
+        self.model.args.num_return_sequences = t
+
+        # because the prediction input and output is a flattened list of strings (parameter types), we need to map
+        # each parameter type to it's name. The output (parameter names) per input (method name) can also consist
+        # of multiple suggestions
+        outputs = list()
+        offset = 0
+        for i in enumerate(data):
+            suggestions = list()
+            # iterate through each suggestion and increment the offset
+            for _ in enumerate(parameter_names[i]):
+                types_per_suggestion = list()
+                for _ in enumerate(parameter_names[i].split(',')):
+                    types_per_suggestion.append(predictions[offset])
+                    offset = offset + 1
+                suggestions.append(types_per_suggestion)
+            outputs.append(suggestions)
+
+        return predictions
     
     def __prefix(self, task_type: str, context: MethodContext) -> str:
         if context.is_static:
