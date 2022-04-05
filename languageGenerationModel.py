@@ -93,18 +93,19 @@ class MethodGenerationModel(model.Model):
                 if len(return_types) == len(predictions):
                     # and num return sequences > 1
                     if isinstance(return_types[i], list):
-                        value.returnType = return_types[i][j]
+                        value.set_return_type(return_types[i][j])
                     else: # otherwise just pick that return type
-                        value.returnType = return_types[i]
+                        value.set_return_type(return_types[i])
                 # else if return type prediction is a compound task, then pick the second sentence for it.
                 elif len(sentences) == 2 and self.__generation_tasks().parameter_names.with_return_type:
-                    value.returnType = sentences[1].strip()
+                    value.set_return_type(sentences[1])
                 # get the hash for the current state to prevent adding the same suggestions multiple times
                 value_hash = value.current_state_hash()
                 if not value_hash in suggestions:
                     value_suggestions.append(value)
                     suggestions.add(value_hash)
             results.append(value_suggestions)
+        return results
     
     def __add_parameters_to_method_values(self, value: MethodValues, parlist: str) -> MethodValues:
         # the sequence should be a parameter list (<type> <name>, <type> <name>. returns: <type>.)
@@ -153,7 +154,7 @@ class MethodGenerationModel(model.Model):
 
     # path addition for the outputs dir 
     def outputs_dir_name(self) -> str:
-        return self.__parent_dir() +'outputs/'
+        return self.__parent_dir() + 'outputs/'
 
     # the main directory for this model
     def __parent_dir(self) -> str:

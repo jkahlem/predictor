@@ -60,6 +60,12 @@ class MethodValues:
         else:
             p.type = type
         self.parameters.append(p)
+    
+    def set_return_type(self, type: str) -> None:
+        type = type.strip()
+        if type.endswith('.'):
+            type = type[:-1]
+        self.returnType = type
 
     def __str__(self) -> str:
         pass

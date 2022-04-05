@@ -101,6 +101,10 @@ class ConnectionHandler:
         model.load_model()
 
         prediction = model.predict(msg.prediction_data)
+        if prediction is None:
+            self.__send_error_msg(msg.id, JsonRpcErrorCodes.InternalError, "Internal error")
+            print("Predictions were not created")
+            return
         if len(prediction) != len(msg.prediction_data):
             self.__send_error_msg(msg.id, JsonRpcErrorCodes.InternalError, "Internal error")
             print("Only " + str(len(prediction)) + " predicted, expected to predict " + str(len(msg.prediction_data)) + " types")
