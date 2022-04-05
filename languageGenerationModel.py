@@ -113,15 +113,14 @@ class MethodGenerationModel(model.Model):
             # if the parameter list is not empty, iterate through the parameter list
             for p in parlist.split(','):
                 # split the return type by the first space.
-                # TODO: If some different split thing is implemented, this won't be enough.
-                p = p.strip().split(' ', maxsplit=1)
+                p = p.split('-', maxsplit=1)
                 parameter_type = 'Object'
                 parameter_name = p[-1]
                 # if the parameter can be splitted into two values, there is also a type predicted.
                 if len(p) == 2:
                     parameter_type = p[0]
 
-                value.add_parameter(parameter_name, parameter_type)
+                value.add_parameter(parameter_name.strip(), parameter_type.strip())
     
     def __predict_parameter_list(self, data: list[MethodContext]) -> list:
         inputs = list()
@@ -210,7 +209,7 @@ class MethodGenerationModel(model.Model):
             if i > 0:
                 output += ", "
             if with_types:
-                output += par.type + " "
+                output += par.type + (" [] - " if par.is_array else " - ")
             output += par.name
         return output + "."
 
