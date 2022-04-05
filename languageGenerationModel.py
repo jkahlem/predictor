@@ -190,8 +190,9 @@ class MethodGenerationModel(model.Model):
     
     def __getGenerateParametersInput(self, context: MethodContext) -> str:
         typeList = ''
-        if context.types is not None and len(context.types) > 0:
-            typeList = " context: "+ ", ".join(self.options.model_options.default_context + context.types) + "."
+        default_context = self.options.model_options.default_context
+        if (context.types is not None and len(context.types) > 0) or (default_context is not None and len(default_context) > 0):
+            typeList = " context: "+ ", ".join(default_context + context.types) + "."
         return 'method: ' + context.methodName + ". class: " + context.className + '.' + typeList
     
     def __getCompoundTaskOutput(self, values: MethodValues) -> str:
