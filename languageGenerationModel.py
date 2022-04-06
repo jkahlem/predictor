@@ -130,7 +130,10 @@ class MethodGenerationModel(model.Model):
                 elif len(p) == 2:
                     parameter_type = p[0]
 
-                value.add_parameter(parameter_name.strip(), parameter_type.strip())
+                parameter_type = parameter_type.strip()
+                if self.options.model_options.use_type_prefixing and parameter_type.startswith(TypePrefix):
+                    parameter_type = (parameter_type[len(TypePrefix):]).strip()
+                value.add_parameter(parameter_name.strip(), parameter_type)
 
     # wraps the model output in list, even if only one suggestion exists to make the code easier 
     def __wrap_model_output_in_lists(self, predictions: list) -> list[list[str]]:
@@ -142,7 +145,7 @@ class MethodGenerationModel(model.Model):
     def __predict_parameter_list(self, data: list[MethodContext]) -> list[list[str]]:
         inputs = list()
         for method in data:
-            inputs.append(GenerateParametersTask + ': ' + self.__getGenerateParametersInput(method))
+            inputs.append(GenerateParametersTask + ': ' + self.__get_generate_parameters_input(method))
         return self.__wrap_model_output_in_lists(self.model.predict(inputs))
 
     def __predict_return_types(self, data: list[MethodContext]) -> list[list[str]]:
@@ -230,9 +233,9 @@ class MethodGenerationModel(model.Model):
             self.__add_generate_parameter_type_task(method, temp_fd)
 
     def __add_generate_parameters_task(self, method: Method, temp_fd):
-        self.__add_task(self.__prefix(GenerateParametersTask, method.context), self.__getGenerateParametersInput(method.context), self.__get_compound_task_output(method.values), temp_fd)
+        self.__add_task(self.__prefix(GenerateParametersTask, method.context), self.__get_generate_parameters_input(method.context), self.__get_compound_task_output(method.values), temp_fd)
     
-    def __getGenerateParametersInput(self, context: MethodContext) -> str:
+    def __get_generate_parameters_input(self, context: MethodContext) -> str:
         return 'method: ' + context.methodName + ". class: " + context.className + '.' + self.__get_context_parameter(context)
     
     def __get_context_parameter(self, context: MethodContext) -> str:
@@ -242,7 +245,7 @@ class MethodGenerationModel(model.Model):
         context_types = default_context + context.types
         if self.options.model_options.use_type_prefixing:
             context_types = [TypePrefix+x for x in context_types]
-        return " context: " + ", ".join(context_types) + "."
+        return " context: " + ", ".join(context_types)
     
     def __get_compound_task_output(self, values: MethodValues) -> str:
         tasks = self.options.model_options.generation_tasks.parameter_names
@@ -273,7 +276,8 @@ class MethodGenerationModel(model.Model):
 
     def __add_generate_parameter_type_task(self, method: Method, temp_fd):
         for par in method.values.parameters:
-            self.__add_task(self.__prefix(AssignParameterTypeTask, method.context), self.__get_generate_parameter_type_input(method.context, par.name), par.type, temp_fd)
+            self.__add_task(self.__prefix(AssignParameterTypeTask, method.context),
+                self.__get_generate_parameter_type_input(method.context, par.name), par.type, temp_fd)
 
     def __get_generate_parameter_type_input(self, context: MethodContext, parName: str) -> str:
         return 'method: ' + context.methodName + ". class: " + context.className + '. parameter: ' + parName
