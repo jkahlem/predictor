@@ -233,7 +233,7 @@ class MethodGenerationModel(model.Model):
         self.__add_task(self.__prefix(GenerateParametersTask, method.context), self.__getGenerateParametersInput(method.context), self.__get_compound_task_output(method.values), temp_fd)
     
     def __getGenerateParametersInput(self, context: MethodContext) -> str:
-        return 'method: ' + context.methodName + ". class: " + context.className + '.' + self.__get_context_parameter()
+        return 'method: ' + context.methodName + ". class: " + context.className + '.' + self.__get_context_parameter(context)
     
     def __get_context_parameter(self, context: MethodContext) -> str:
         default_context = self.options.model_options.default_context
