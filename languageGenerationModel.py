@@ -132,26 +132,24 @@ class MethodGenerationModel(model.Model):
 
                 value.add_parameter(parameter_name.strip(), parameter_type.strip())
 
-    # wraps the model output in list, even if only one suggestion exists to make the code easier  
-    def __wrap_model_output_in_lists(predictions: list) -> list[list[str]]:
-        for i in enumerate(predictions):
+    # wraps the model output in list, even if only one suggestion exists to make the code easier 
+    def __wrap_model_output_in_lists(self, predictions: list) -> list[list[str]]:
+        for i, _ in enumerate(predictions):
             if not isinstance(predictions[i], list):
                 predictions[i] = [predictions[i]]
         return predictions
-    
+
     def __predict_parameter_list(self, data: list[MethodContext]) -> list[list[str]]:
         inputs = list()
         for method in data:
             inputs.append(GenerateParametersTask + ': ' + self.__getGenerateParametersInput(method))
-        predictions = self.model.predict(inputs)
-        return self.__wrap_model_output_in_lists(predictions)
-    
+        return self.__wrap_model_output_in_lists(self.model.predict(inputs))
+
     def __predict_return_types(self, data: list[MethodContext]) -> list[list[str]]:
         inputs = list()
         for method in data:
             inputs.append(AssignReturnTypeTask + ': ' + self.__get_generate_return_type_input(method))
-        predictions = self.model.predict(inputs)
-        return self.__wrap_model_output_in_lists(predictions)
+        return self.__wrap_model_output_in_lists(self.model.predict(inputs))
 
     # parameter_names can be a list of single predictions or a list of suggestion (multiple predictions per input)
     # the return value is structured as: list[MethodIndex][SuggestionIndex][ParameterIndex]
@@ -176,7 +174,7 @@ class MethodGenerationModel(model.Model):
         # of multiple suggestions
         outputs = list()
         offset = 0
-        for i in enumerate(data):
+        for i, _ in enumerate(data):
             suggestions = list()
             # iterate through each suggestion and increment the offset
             for _ in enumerate(parameter_names[i]):
