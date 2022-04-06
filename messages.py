@@ -124,6 +124,7 @@ class ModelOptions:
     max_sequence_length: int
     num_return_sequences: int
     default_context: list[str]
+    use_type_prefixing: bool
 
     def __init__(self, options: dict = dict()):
         self.batch_size = 0
@@ -132,6 +133,7 @@ class ModelOptions:
         self.num_return_sequences = 0
         self.generation_tasks = MethodGenerationTaskOptions()
         self.default_context = list()
+        self.use_type_prefixing = False
         if 'batchSize' in options:
             self.batch_size = options['batchSize']
         if 'numOfEpochs' in options:
@@ -144,6 +146,8 @@ class ModelOptions:
             self.generation_tasks = MethodGenerationTaskOptions(options['generationTasks'])
         if 'defaultContext' in options:
             self.default_context = options['defaultContext']
+        if 'useTypePrefixing' in options:
+            self.use_type_prefixing = options['useTypePrefixing']
 
     def __str__(self) -> str:
         return "Model Options..."

@@ -12,6 +12,7 @@ from os.path import exists
 GenerateParametersTask = 'generate parameters'
 AssignReturnTypeTask = 'assign returntype'
 AssignParameterTypeTask = 'assign parametertype'
+TypePrefix = 'type_'
 
 class MethodGenerationModel(model.Model):
     options: Options
@@ -98,11 +99,7 @@ class MethodGenerationModel(model.Model):
 
                 # if return types are predicted in a separate task
                 if len(return_types) == len(predictions):
-                    # and num return sequences > 1
-                    if isinstance(return_types[i], list):
-                        value.set_return_type(return_types[i][j])
-                    else: # otherwise just pick that return type
-                        value.set_return_type(return_types[i])
+                    value.set_return_type(return_types[i][j])
                 # else if return type prediction is a compound task, then pick the second sentence for it.
                 elif len(sentences) == 2 and self.__generation_tasks().parameter_names.with_return_type:
                     value.set_return_type(sentences[1])
@@ -151,7 +148,7 @@ class MethodGenerationModel(model.Model):
     def __predict_return_types(self, data: list[MethodContext]) -> list[list[str]]:
         inputs = list()
         for method in data:
-            inputs.append(AssignReturnTypeTask + ': ' + self.__getGenerateReturnTypeInput(method))
+            inputs.append(AssignReturnTypeTask + ': ' + self.__get_generate_return_type_input(method))
         return self.__wrap_model_output_in_lists(self.model.predict(inputs))
 
     # parameter_names can be a list of single predictions or a list of suggestion (multiple predictions per input)
@@ -164,7 +161,7 @@ class MethodGenerationModel(model.Model):
             for suggestion in parameter_suggestions:
                 parameters = suggestion.split(',')
                 for par in parameters:
-                    inputs.append(AssignParameterTypeTask + ': ' + self.__getGenerateParameterTypeInput(method, par))
+                    inputs.append(AssignParameterTypeTask + ': ' + self.__get_generate_parameter_type_input(method, par))
         
         # to make things not more complicated, parameter type predictions should have only one suggestion
         t = self.model.args.num_return_sequences
@@ -216,7 +213,7 @@ class MethodGenerationModel(model.Model):
             if i > n:
                 print("[" + str(i) + "/" + str(len(data)) + "] Converting methods ...")
                 n += 1000
-            self.__addMethodToFrame(method, temp_fd)
+            self.__add_method_to_frame(method, temp_fd)
             i += 1
         temp_fd.seek(0)
         frame: pd.DataFrame = pd.read_csv(temp_fd, header=None, names=['prefix', 'input_text', 'target_text'], sep=";", na_filter=False)
@@ -224,58 +221,64 @@ class MethodGenerationModel(model.Model):
         print("Done.")
         return frame
     
-    def __addMethodToFrame(self, method: Method, temp_fd):
+    def __add_method_to_frame(self, method: Method, temp_fd):
         tasks = self.options.model_options.generation_tasks
-        self.__addGenerateParametersTask(method, temp_fd)
+        self.__add_generate_parameters_task(method, temp_fd)
         if tasks.return_type:
-            self.__addGenerateReturnTypeTask(method, temp_fd)
+            self.__add_generate_return_type_task(method, temp_fd)
         if tasks.parameter_types:
-            self.__addGenerateParameterTypeTask(method, temp_fd)
+            self.__add_generate_parameter_type_task(method, temp_fd)
 
-    def __addGenerateParametersTask(self, method: Method, temp_fd):
-        self.__addTask(self.__prefix(GenerateParametersTask, method.context), self.__getGenerateParametersInput(method.context), self.__getCompoundTaskOutput(method.values), temp_fd)
+    def __add_generate_parameters_task(self, method: Method, temp_fd):
+        self.__add_task(self.__prefix(GenerateParametersTask, method.context), self.__getGenerateParametersInput(method.context), self.__get_compound_task_output(method.values), temp_fd)
     
     def __getGenerateParametersInput(self, context: MethodContext) -> str:
-        typeList = ''
-        default_context = self.options.model_options.default_context
-        if (context.types is not None and len(context.types) > 0) or (default_context is not None and len(default_context) > 0):
-            typeList = " context: "+ ", ".join(default_context + context.types) + "."
-        return 'method: ' + context.methodName + ". class: " + context.className + '.' + typeList
+        return 'method: ' + context.methodName + ". class: " + context.className + '.' + self.__get_context_parameter()
     
-    def __getCompoundTaskOutput(self, values: MethodValues) -> str:
+    def __get_context_parameter(self, context: MethodContext) -> str:
+        default_context = self.options.model_options.default_context
+        if not context.types and not default_context:
+            return ""
+        context_types = default_context + context.types
+        if self.options.model_options.use_type_prefixing:
+            context_types = [TypePrefix+x for x in context_types]
+        return " context: " + ", ".join(context_types) + "."
+    
+    def __get_compound_task_output(self, values: MethodValues) -> str:
         tasks = self.options.model_options.generation_tasks.parameter_names
-        output = self.__getGenerateParametersOutput(values.parameters, tasks.with_parameter_types)
+        output = self.__get_generate_parameters_output(values.parameters, tasks.with_parameter_types)
         if tasks.with_return_type:
             output += " returns: " + values.returnType + "."
 
         return output
 
-    def __getGenerateParametersOutput(self, parameters: list[Parameter], with_types: bool = False) -> str:
+    def __get_generate_parameters_output(self, parameters: list[Parameter], with_types: bool = False) -> str:
         if len(parameters) == 0:
             return 'void.'
         output = ''
+        use_type_prefix = self.options.model_options.use_type_prefixing
         for i, par in enumerate(parameters):
             if i > 0:
                 output += ", "
             if with_types:
-                output += par.type + (" [] - " if par.is_array else " - ")
+                output += (TypePrefix if use_type_prefix else "") + par.type +  ("[] - " if par.is_array else " - ")
             output += par.name
         return output + "."
 
-    def __addGenerateReturnTypeTask(self, method: Method, temp_fd):
-        self.__addTask(self.__prefix(AssignReturnTypeTask, method.context), self.__getGenerateReturnTypeInput(method.context), method.values.returnType, temp_fd)
+    def __add_generate_return_type_task(self, method: Method, temp_fd):
+        self.__add_task(self.__prefix(AssignReturnTypeTask, method.context), self.__get_generate_return_type_input(method.context), method.values.returnType, temp_fd)
 
-    def __getGenerateReturnTypeInput(self, context: MethodContext) -> str:
+    def __get_generate_return_type_input(self, context: MethodContext) -> str:
         return 'method: ' + context.methodName + ". class: " + context.className + '.'
 
-    def __addGenerateParameterTypeTask(self, method: Method, temp_fd):
+    def __add_generate_parameter_type_task(self, method: Method, temp_fd):
         for par in method.values.parameters:
-            self.__addTask(self.__prefix(AssignParameterTypeTask, method.context), self.__getGenerateParameterTypeInput(method.context, par.name), par.type, temp_fd)
+            self.__add_task(self.__prefix(AssignParameterTypeTask, method.context), self.__get_generate_parameter_type_input(method.context, par.name), par.type, temp_fd)
 
-    def __getGenerateParameterTypeInput(self, context: MethodContext, parName: str) -> str:
+    def __get_generate_parameter_type_input(self, context: MethodContext, parName: str) -> str:
         return 'method: ' + context.methodName + ". class: " + context.className + '. parameter: ' + parName
 
-    def __addTask(self, prefix, input_text, target_text, temp_fd):
+    def __add_task(self, prefix, input_text, target_text, temp_fd):
         s: str = prefix + ";" + input_text + ";" + target_text + "\n"
         temp_fd.write(s.encode('utf-8'))
     
