@@ -143,13 +143,15 @@ class MethodGenerationModel(model.Model):
         inputs = list()
         for method in data:
             inputs.append(GenerateParametersTask + ': ' + self.__getGenerateParametersInput(method))
-        return self.__wrap_model_output_in_lists(self.model.predict(inputs))
+        predictions = self.model.predict(inputs)
+        return self.__wrap_model_output_in_lists(predictions)
     
     def __predict_return_types(self, data: list[MethodContext]) -> list[list[str]]:
         inputs = list()
         for method in data:
             inputs.append(AssignReturnTypeTask + ': ' + self.__get_generate_return_type_input(method))
-        return self.__wrap_model_output_in_lists(self.model.predict(inputs))
+        predictions = self.model.predict(inputs)
+        return self.__wrap_model_output_in_lists(predictions)
 
     # parameter_names can be a list of single predictions or a list of suggestion (multiple predictions per input)
     # the return value is structured as: list[MethodIndex][SuggestionIndex][ParameterIndex]
