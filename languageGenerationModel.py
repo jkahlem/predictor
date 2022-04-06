@@ -93,7 +93,7 @@ class MethodGenerationModel(model.Model):
             # iterate through the predicted sequences.
             for j, parlist in enumerate(generated_parameters):
                 value = MethodValues()
-                sentences = parlist.strip().split('. returns:')
+                sentences = parlist.strip().split('$')
                 par_types = parameter_types[i][j] if len(parameter_types) > 0 else None
                 self.__add_parameters_to_method_values(value, sentences[0], par_types)
 
@@ -116,7 +116,7 @@ class MethodGenerationModel(model.Model):
     def __add_parameters_to_method_values(self, value: MethodValues, parlist: str, types: list[str]) -> MethodValues:
         # the sequence should be a parameter list (<type>-<name>, <type>-<name>. returns: <type>.)
         # the parameter list can be "void."
-        if not (parlist == 'void' or parlist == 'void.'):
+        if not (parlist == 'void' or parlist == 'void .'):
             # if the parameter list is not empty, iterate through the parameter list
             for i, p in enumerate(parlist.split(',')):
                 p = p.split('-', maxsplit=1)
@@ -133,9 +133,9 @@ class MethodGenerationModel(model.Model):
                 parameter_type = parameter_type.strip()
                 if self.options.model_options.use_type_prefixing and parameter_type.startswith(TypePrefix):
                     parameter_type = (parameter_type[len(TypePrefix):]).strip()
-                value.add_parameter(parameter_name.strip(), parameter_type)
+                value.add_parameter(parameter_name.replace('.', '').strip(), parameter_type)
 
-    # wraps the model output in list, even if only one suggestion exists to make the code easier 
+    # wraps the model output in list, even if only one suggestion exists to make the co[e easier 
     def __wrap_model_output_in_lists(self, predictions: list) -> list[list[str]]:
         for i, _ in enumerate(predictions):
             if not isinstance(predictions[i], list):
@@ -236,7 +236,7 @@ class MethodGenerationModel(model.Model):
         self.__add_task(self.__prefix(GenerateParametersTask, method.context), self.__get_generate_parameters_input(method.context), self.__get_compound_task_output(method.values), temp_fd)
     
     def __get_generate_parameters_input(self, context: MethodContext) -> str:
-        return 'method: ' + context.methodName + ". class: " + context.className + '.' + self.__get_context_parameter(context)
+        return 'method: ' + context.methodName + " . class: " + context.className + ' .' + self.__get_context_parameter(context)
     
     def __get_context_parameter(self, context: MethodContext) -> str:
         default_context = self.options.model_options.default_context
@@ -251,13 +251,13 @@ class MethodGenerationModel(model.Model):
         tasks = self.options.model_options.generation_tasks.parameter_names
         output = self.__get_generate_parameters_output(values.parameters, tasks.with_parameter_types)
         if tasks.with_return_type:
-            output += " returns: " + values.returnType + "."
+            output += " $ " + values.returnType + ""
 
         return output
 
     def __get_generate_parameters_output(self, parameters: list[Parameter], with_types: bool = False) -> str:
         if len(parameters) == 0:
-            return 'void.'
+            return 'void .'
         output = ''
         use_type_prefix = self.options.model_options.use_type_prefixing
         for i, par in enumerate(parameters):
@@ -266,13 +266,13 @@ class MethodGenerationModel(model.Model):
             if with_types:
                 output += (TypePrefix if use_type_prefix else "") + par.type +  ("[] - " if par.is_array else " - ")
             output += par.name
-        return output + "."
+        return output + " ."
 
     def __add_generate_return_type_task(self, method: Method, temp_fd):
         self.__add_task(self.__prefix(AssignReturnTypeTask, method.context), self.__get_generate_return_type_input(method.context), method.values.returnType, temp_fd)
 
     def __get_generate_return_type_input(self, context: MethodContext) -> str:
-        return 'method: ' + context.methodName + ". class: " + context.className + '.'
+        return 'method: ' + context.methodName + " . class: " + context.className + ' .'
 
     def __add_generate_parameter_type_task(self, method: Method, temp_fd):
         for par in method.values.parameters:
@@ -280,7 +280,7 @@ class MethodGenerationModel(model.Model):
                 self.__get_generate_parameter_type_input(method.context, par.name), par.type, temp_fd)
 
     def __get_generate_parameter_type_input(self, context: MethodContext, parName: str) -> str:
-        return 'method: ' + context.methodName + ". class: " + context.className + '. parameter: ' + parName
+        return 'method: ' + context.methodName + " . class: " + context.className + ' . parameter: ' + parName
 
     def __add_task(self, prefix, input_text, target_text, temp_fd):
         s: str = prefix + ";" + input_text + ";" + target_text + "\n"
