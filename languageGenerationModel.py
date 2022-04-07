@@ -233,10 +233,16 @@ class MethodGenerationModel(model.Model):
             self.__add_generate_parameter_type_task(method, temp_fd)
 
     def __add_generate_parameters_task(self, method: Method, temp_fd):
-        self.__add_task(self.__prefix(GenerateParametersTask, method.context), self.__get_generate_parameters_input(method.context), self.__get_compound_task_output(method.values), temp_fd)
+        self.__add_task(self.__prefix(GenerateParametersTask, method.context),
+            self.__get_generate_parameters_input(method.context),
+            self.__get_compound_task_output(method.values),
+            temp_fd)
     
     def __get_generate_parameters_input(self, context: MethodContext) -> str:
-        return 'method: ' + context.methodName + " . class: " + context.className + ' .' + self.__get_context_parameter(context)
+        compound_task = self.options.model_options.generation_tasks.parameter_names
+        if compound_task.with_parameter_types or compound_task.with_return_type:
+            return 'method: ' + context.methodName + " . class: " + context.className + ' .' + self.__get_context_parameter(context)
+        return 'method: ' + context.methodName + " . class: " + context.className + ' .'
     
     def __get_context_parameter(self, context: MethodContext) -> str:
         default_context = self.options.model_options.default_context
@@ -269,18 +275,23 @@ class MethodGenerationModel(model.Model):
         return output + " ."
 
     def __add_generate_return_type_task(self, method: Method, temp_fd):
-        self.__add_task(self.__prefix(AssignReturnTypeTask, method.context), self.__get_generate_return_type_input(method.context), method.values.returnType, temp_fd)
+        self.__add_task(self.__prefix(AssignReturnTypeTask, method.context),
+            self.__get_generate_return_type_input(method.context),
+            method.values.returnType,
+            temp_fd)
 
     def __get_generate_return_type_input(self, context: MethodContext) -> str:
-        return 'method: ' + context.methodName + " . class: " + context.className + ' .'
+        return 'method: ' + context.methodName + " . class: " + context.className + ' .' + self.__get_context_parameter(context)
 
     def __add_generate_parameter_type_task(self, method: Method, temp_fd):
         for par in method.values.parameters:
             self.__add_task(self.__prefix(AssignParameterTypeTask, method.context),
-                self.__get_generate_parameter_type_input(method.context, par.name), par.type, temp_fd)
+                self.__get_generate_parameter_type_input(method.context, par.name),
+                par.type,
+                temp_fd)
 
     def __get_generate_parameter_type_input(self, context: MethodContext, parName: str) -> str:
-        return 'method: ' + context.methodName + " . class: " + context.className + ' . parameter: ' + parName
+        return ' parameter: ' + parName + 'method: ' + context.methodName + " . class: " + context.className + ' .' + self.__get_context_parameter(context)
 
     def __add_task(self, prefix, input_text, target_text, temp_fd):
         s: str = prefix + ";" + input_text + ";" + target_text + "\n"
