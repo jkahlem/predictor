@@ -125,6 +125,7 @@ class ModelOptions:
     num_return_sequences: int
     default_context: list[str]
     use_type_prefixing: bool
+    empty_parameter_list_by_keyword: bool
 
     def __init__(self, options: dict = dict()):
         self.batch_size = 0
@@ -134,6 +135,7 @@ class ModelOptions:
         self.generation_tasks = MethodGenerationTaskOptions()
         self.default_context = list()
         self.use_type_prefixing = False
+        self.empty_parameter_list_by_keyword = False
         if 'batchSize' in options:
             self.batch_size = options['batchSize']
         if 'numOfEpochs' in options:
@@ -148,6 +150,8 @@ class ModelOptions:
             self.default_context = options['defaultContext']
         if 'useTypePrefixing' in options:
             self.use_type_prefixing = options['useTypePrefixing']
+        if 'emptyParameterListByKeyword' in options:
+            self.empty_parameter_list_by_keyword = options['emptyParameterListByKeyword']
 
     def __str__(self) -> str:
         return "Model Options..."

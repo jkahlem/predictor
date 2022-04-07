@@ -117,7 +117,7 @@ class MethodGenerationModel(model.Model):
     def __add_parameters_to_method_values(self, value: MethodValues, parlist: str, types: list[str]) -> MethodValues:
         # the sequence should be a parameter list (<type>-<name>, <type>-<name>. returns: <type>.)
         # the parameter list can be "."
-        if re.search('[a-zA-Z]', parlist):
+        if not self.__is_parameter_list_empty(parlist):
             # if the parameter list is not empty, iterate through the parameter list
             for i, p in enumerate(parlist.split(',')):
                 p = p.split('-', maxsplit=1)
@@ -135,6 +135,12 @@ class MethodGenerationModel(model.Model):
                 if self.options.model_options.use_type_prefixing and parameter_type.startswith(TypePrefix):
                     parameter_type = (parameter_type[len(TypePrefix):]).strip()
                 value.add_parameter(parameter_name.replace('.', '').strip(), parameter_type)
+    
+    def __is_parameter_list_empty(self, parlist: str) -> bool:
+        if self.options.model_options.empty_parameter_list_by_keyword:
+            return parlist == 'void' or parlist == 'void .'
+        else:
+            return not re.search('[a-zA-Z]', parlist)
 
     # wraps the model output in list, even if only one suggestion exists to make the co[e easier 
     def __wrap_model_output_in_lists(self, predictions: list) -> list[list[str]]:
@@ -264,7 +270,7 @@ class MethodGenerationModel(model.Model):
 
     def __get_generate_parameters_output(self, parameters: list[Parameter], with_types: bool = False) -> str:
         if len(parameters) == 0:
-            return '.'
+            return ('void .' if self.options.model_options.empty_parameter_list_by_keyword else '.')
         output = ''
         use_type_prefix = self.options.model_options.use_type_prefixing
         for i, par in enumerate(parameters):
