@@ -8,6 +8,7 @@ import model
 import pandas as pd
 from config import is_cuda_available
 from os.path import exists
+import re
 
 GenerateParametersTask = 'generate parameters'
 AssignReturnTypeTask = 'assign returntype'
@@ -115,8 +116,8 @@ class MethodGenerationModel(model.Model):
     
     def __add_parameters_to_method_values(self, value: MethodValues, parlist: str, types: list[str]) -> MethodValues:
         # the sequence should be a parameter list (<type>-<name>, <type>-<name>. returns: <type>.)
-        # the parameter list can be "void."
-        if not (parlist == 'void' or parlist == 'void .'):
+        # the parameter list can be "."
+        if re.search('[a-zA-Z]', parlist):
             # if the parameter list is not empty, iterate through the parameter list
             for i, p in enumerate(parlist.split(',')):
                 p = p.split('-', maxsplit=1)
@@ -263,7 +264,7 @@ class MethodGenerationModel(model.Model):
 
     def __get_generate_parameters_output(self, parameters: list[Parameter], with_types: bool = False) -> str:
         if len(parameters) == 0:
-            return 'void .'
+            return '.'
         output = ''
         use_type_prefix = self.options.model_options.use_type_prefixing
         for i, par in enumerate(parameters):
