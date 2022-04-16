@@ -1,5 +1,6 @@
 import json
 from enum import Enum
+from typing import Tuple
 
 from methods import Method, MethodContext, MethodEncoder
 
@@ -117,6 +118,44 @@ class MethodGenerationTaskOptions:
             if self.parameter_names.with_return_type and self.return_type:
                 raise Exception('Cannot generate method with return type as compound task and as separate task.')
 
+class Adafactor:
+    beta: float
+    clip_threshold: float
+    decay_rate: float
+    eps: Tuple[float, float]
+    relative_step: bool
+    warmup_init: bool
+    scale_parameter: bool
+
+    def __init__(self, options: dict = dict()):
+        self.beta = None
+        self.clip_threshold = None
+        self.decay_rate = None
+        self.eps = None
+        self.relative_step = None
+        self.warmup_init = None
+        self.scale_parameter = None
+        if 'beta' in options:
+            self.beta = (options['beta'])
+        if 'clipThreshold' in options:
+            self.clip_threshold = options['clipThreshold']
+        if 'decayRate' in options:
+            self.decay_rate = options['decayRate']
+        if 'eps' in options:
+            self.eps = options['eps'][0], options['eps'][1]
+        if 'relativeStep' in options:
+            self.relative_step = options['relativeStep']
+        if 'warmupInit' in options:
+            self.warmup_init = options['warmupInit']
+        if 'scaleParameter' in options:
+            self.scale_parameter = options['scaleParameter']
+
+    def __str__(self) -> str:
+        return "Options..."
+
+    def __repr__(self) -> str:
+        return "Options..."
+
 class ModelOptions:
     batch_size: int
     num_of_epochs: int
@@ -126,6 +165,8 @@ class ModelOptions:
     default_context: list[str]
     use_type_prefixing: bool
     empty_parameter_list_by_keyword: bool
+    adafactor: Adafactor
+    model_name: str
 
     def __init__(self, options: dict = dict()):
         self.batch_size = 0
@@ -136,6 +177,8 @@ class ModelOptions:
         self.default_context = list()
         self.use_type_prefixing = False
         self.empty_parameter_list_by_keyword = False
+        self.adafactor = Adafactor()
+        self.model_name = "t5"
         if 'batchSize' in options:
             self.batch_size = options['batchSize']
         if 'numOfEpochs' in options:
@@ -152,6 +195,10 @@ class ModelOptions:
             self.use_type_prefixing = options['useTypePrefixing']
         if 'emptyParameterListByKeyword' in options:
             self.empty_parameter_list_by_keyword = options['emptyParameterListByKeyword']
+        if 'adafactor' in options:
+            self.adafactor = Adafactor(options['adafactor'])
+        if 'modelName' in options:
+            self.model_name = options['modelName']
 
     def __str__(self) -> str:
         return "Model Options..."

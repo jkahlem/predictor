@@ -4,6 +4,7 @@ import errno
 import os
 import threading
 from languageGenerationModel import MethodGenerationModel
+from methodGenerationBart import MethodGenerationModelBart
 
 from messages import ExistsMessage, Message, EvaluateMessage, Options, PredictMessage, TrainMessage, parse_message_from_fd, SupportedModels
 from config import get_port, get_script_dir, is_cuda_available, load_config
@@ -172,7 +173,12 @@ def get_model(options: Options) -> ModelHolder:
         if options.target_model == SupportedModels.ReturnTypesPrediction:
             prediction_models[options.target_model] = ModelHolder(ReturnTypesPredictionModel())
         elif options.target_model == SupportedModels.MethodGenerator:
-            prediction_models[options.target_model] = ModelHolder(MethodGenerationModel())
+            if options.model_options.model_name == 'bart':
+                prediction_models[options.target_model] = ModelHolder(MethodGenerationModelBart())
+            elif options.model_options.model_name == 't5':
+                prediction_models[options.target_model] = ModelHolder(MethodGenerationModel)
+            else:
+                raise Exception('Unsupported model for method generation task: ' + options.model_options.model_name)
         else:
             prediction_model_lock.release()
             raise Exception("Unsupported target model: " + options.target_model)

@@ -1,5 +1,6 @@
 import json
 from jsonrpcErrorCodes import JsonRpcErrorCodes
+from modelConsts import ArrayToken
 
 class Parameter:
     name: str
@@ -54,7 +55,7 @@ class MethodValues:
     def add_parameter(self, name: str, type: str) -> None:
         p = Parameter()
         p.name = name
-        if type.endswith('[]'):
+        if type.endswith(ArrayToken):
             p.is_array = True
             p.type = type[:-2]
         else:
