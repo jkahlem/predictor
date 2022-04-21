@@ -149,9 +149,6 @@ class MethodGenerationModelBart(model.Model):
                     parameter_type = p[0]
 
                 parameter_type = parameter_type.strip()
-                    
-                if self.options.model_options.use_type_prefixing and parameter_type.startswith(TypePrefix):
-                    parameter_type = (parameter_type[len(TypePrefix):]).strip()
                 value.add_parameter(parameter_name.replace('.', '').strip(), parameter_type)
 
     def __is_parameter_list_empty(self, parlist: str) -> bool:
@@ -224,8 +221,6 @@ class MethodGenerationModelBart(model.Model):
         if not context.types and not default_context:
             return ""
         context_types = default_context + context.types
-        if self.options.model_options.use_type_prefixing:
-            context_types = [TypePrefix+x for x in context_types]
         return " context: " + EmbeddedParameterSeparator.join(context_types)
 
     def __get_compound_task_output(self, values: MethodValues) -> str:
@@ -240,13 +235,12 @@ class MethodGenerationModelBart(model.Model):
         if len(parameters) == 0:
             return 'void' if self.options.model_options.empty_parameter_list_by_keyword else ''
         output = ''
-        use_type_prefix = self.options.model_options.use_type_prefixing
         order = self.options.model_options.output_order
         for i, par in enumerate(parameters):
             if i > 0:
                 output += EmbeddedParameterSeparator
 
-            typestring = (TypePrefix if use_type_prefix else "") + par.type + (" " + ArrayToken if par.is_array else '')
+            typestring = par.type + (" " + ArrayToken if par.is_array else '')
             if order.parameter_name < order.parameter_type:
                 output += par.name + EmbeddedTypeSeparator + typestring
             else:

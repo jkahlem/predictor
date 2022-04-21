@@ -8,7 +8,7 @@ from config import is_cuda_available
 from os.path import exists
 import re
 
-from modelConsts import ArrayToken, EmbeddedParameterSeparator, EmbeddedReturnSeparator, EmbeddedTypeSeparator, ParameterSeparatorToken, ReturnSeparatorToken, TypePrefix, TypeSeparatorToken
+from modelConsts import ArrayToken, EmbeddedParameterSeparator, EmbeddedReturnSeparator, EmbeddedTypeSeparator, ParameterSeparatorToken, ReturnSeparatorToken, TypeSeparatorToken
 
 GenerateParametersTask = 'generate parameters'
 AssignReturnTypeTask = 'assign returntype'
@@ -172,8 +172,6 @@ class MethodGenerationModel(model.Model):
                     parameter_type = p[0]
 
                 parameter_type = parameter_type.strip()
-                if self.options.model_options.use_type_prefixing and parameter_type.startswith(TypePrefix):
-                    parameter_type = (parameter_type[len(TypePrefix):]).strip()
                 value.add_parameter(parameter_name.replace('.', '').strip(), parameter_type)
 
     def __is_parameter_list_empty(self, parlist: str) -> bool:
@@ -296,8 +294,6 @@ class MethodGenerationModel(model.Model):
         if not context.types and not default_context:
             return ""
         context_types = default_context + context.types
-        if self.options.model_options.use_type_prefixing:
-            context_types = [TypePrefix+x for x in context_types]
         return " context: " + EmbeddedParameterSeparator.join(context_types)
 
     def __get_compound_task_output(self, values: MethodValues) -> str:
@@ -325,7 +321,7 @@ class MethodGenerationModel(model.Model):
                 output += par.name
                 continue
 
-            typestring = (TypePrefix if use_type_prefix else "") + par.type + (" " + ArrayToken if par.is_array else "")
+            typestring = par.type + (" " + ArrayToken if par.is_array else "")
             if order.parameter_name < order.parameter_type:
                 output += par.name + EmbeddedTypeSeparator + typestring
             else:

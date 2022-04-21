@@ -181,7 +181,6 @@ class ModelOptions:
     num_return_sequences: int
     num_beams: int
     default_context: list[str]
-    use_type_prefixing: bool
     empty_parameter_list_by_keyword: bool
     adafactor: Adafactor
     model_name: str
@@ -197,7 +196,6 @@ class ModelOptions:
         self.num_return_sequences = 0
         self.generation_tasks = MethodGenerationTaskOptions()
         self.default_context = list()
-        self.use_type_prefixing = False
         self.empty_parameter_list_by_keyword = False
         self.adafactor = Adafactor()
         self.model_name = "t5"
@@ -218,8 +216,6 @@ class ModelOptions:
             self.generation_tasks = MethodGenerationTaskOptions(options['generationTasks'])
         if 'defaultContext' in options:
             self.default_context = options['defaultContext']
-        if 'useTypePrefixing' in options:
-            self.use_type_prefixing = options['useTypePrefixing']
         if 'emptyParameterListByKeyword' in options:
             self.empty_parameter_list_by_keyword = options['emptyParameterListByKeyword']
         if 'adafactor' in options:
