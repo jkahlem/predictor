@@ -29,7 +29,7 @@ class MethodGenerationModel(model.Model):
 
     def __t5Args(self) -> T5Args:
         model_options = self.options.model_options
-        args = T5Args(cache_dir=self.cache_dir_name(), output_dir=self.outputs_dir_name(), num_train_epochs=1)
+        args = T5Args(cache_dir=self.cache_dir_name(), output_dir=self.outputs_dir_name(), num_train_epochs=1, save_steps=5000)
 
         if model_options.num_of_epochs > 0:
             args.num_train_epochs = model_options.num_of_epochs
@@ -302,23 +302,34 @@ class MethodGenerationModel(model.Model):
 
     def __get_compound_task_output(self, values: MethodValues) -> str:
         tasks = self.options.model_options.generation_tasks.parameter_names
-        output = self.__get_generate_parameters_output(values.parameters, tasks.with_parameter_types)
-        if tasks.with_return_type:
-            output += EmbeddedReturnSeparator + values.returnType
+        parameter_list = self.__get_generate_parameters_output(values.parameters, tasks.with_parameter_types)
+        if not tasks.with_return_type:
+            return parameter_list
 
-        return output
+        order = self.options.model_options.output_order
+        if order.return_type < order.parameter_name:
+            return values.returnType + EmbeddedReturnSeparator + parameter_list
+        else:
+            return parameter_list + EmbeddedReturnSeparator + values.returnType
 
     def __get_generate_parameters_output(self, parameters: list[Parameter], with_types: bool = False) -> str:
         if len(parameters) == 0:
             return 'void .' if self.options.model_options.empty_parameter_list_by_keyword else '.'
         output = ''
         use_type_prefix = self.options.model_options.use_type_prefixing
+        order = self.options.model_options.output_order
         for i, par in enumerate(parameters):
             if i > 0:
                 output += EmbeddedParameterSeparator
-            if with_types:
-                output += (TypePrefix if use_type_prefix else "") + par.type + (" " + ArrayToken if par.is_array else "") + EmbeddedTypeSeparator
-            output += par.name
+            if not with_types:
+                output += par.name
+                continue
+
+            typestring = (TypePrefix if use_type_prefix else "") + par.type + (" " + ArrayToken if par.is_array else "")
+            if order.parameter_name < order.parameter_type:
+                output += par.name + EmbeddedTypeSeparator + typestring
+            else:
+                output += typestring + EmbeddedTypeSeparator + par.name
         return output + " ."
 
     def __add_generate_return_type_task(self, method: Method, temp_fd):

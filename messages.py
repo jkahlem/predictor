@@ -156,6 +156,23 @@ class Adafactor:
     def __repr__(self) -> str:
         return "Options..."
 
+class OutputComponentOrder:
+    return_type: int
+    parameter_type: int
+    parameter_name: int
+
+    def __init__(self, order: dict = dict()) -> None:
+        self.parameter_type = 1
+        self.parameter_name = 2
+        self.return_type = 3
+        if 'parameterType' in order:
+            self.parameter_type = order['parameterType']
+        if 'parameterName' in order:
+            self.parameter_name = order['parameterName']
+        if 'returnType' in order:
+            self.return_type = order['returnType']
+
+
 class ModelOptions:
     batch_size: int
     num_of_epochs: int
@@ -171,6 +188,7 @@ class ModelOptions:
     length_penalty: float
     top_k: float
     top_p: float
+    output_order: OutputComponentOrder
 
     def __init__(self, options: dict = dict()):
         self.batch_size = 0
@@ -183,10 +201,11 @@ class ModelOptions:
         self.empty_parameter_list_by_keyword = False
         self.adafactor = Adafactor()
         self.model_name = "t5"
-        self.num_beams = None
+        self.num_beams = 0
         self.length_penalty = None
         self.top_k = None
         self.top_p = None
+        self.output_order = OutputComponentOrder()
         if 'batchSize' in options:
             self.batch_size = options['batchSize']
         if 'numOfEpochs' in options:
@@ -215,6 +234,8 @@ class ModelOptions:
             self.top_k = options['topK']
         if 'topP' in options:
             self.top_p = options['topP']
+        if 'outputOrder' in options:
+            self.output_order = OutputComponentOrder(options['outputOrder'])
 
     def __str__(self) -> str:
         return "Model Options..."

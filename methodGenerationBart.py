@@ -229,25 +229,28 @@ class MethodGenerationModelBart(model.Model):
         return " context: " + EmbeddedParameterSeparator.join(context_types)
 
     def __get_compound_task_output(self, values: MethodValues) -> str:
-        tasks = self.options.model_options.generation_tasks.parameter_names
-        output = self.__get_generate_parameters_output(values.parameters, tasks.with_parameter_types)
-        if tasks.with_return_type:
-            output += EmbeddedReturnSeparator + values.returnType + ""
+        parameter_list = self.__get_generate_parameters_output(values.parameters)
+        order = self.options.model_options.output_order
+        if order.return_type < order.parameter_name:
+            return values.returnType + EmbeddedReturnSeparator + parameter_list
+        else:
+            return parameter_list + EmbeddedReturnSeparator + values.returnType
 
-        return output
-
-    def __get_generate_parameters_output(self, parameters: list[Parameter], with_types: bool = False) -> str:
+    def __get_generate_parameters_output(self, parameters: list[Parameter]) -> str:
         if len(parameters) == 0:
             return 'void' if self.options.model_options.empty_parameter_list_by_keyword else ''
         output = ''
         use_type_prefix = self.options.model_options.use_type_prefixing
+        order = self.options.model_options.output_order
         for i, par in enumerate(parameters):
             if i > 0:
-                output += " " + ParameterSeparatorToken + " "
-            if with_types:
-                array_extension = ((" " + ArrayToken) if par.is_array else '')
-                output += (TypePrefix if use_type_prefix else "") + par.type + array_extension + EmbeddedTypeSeparator
-            output += par.name
+                output += EmbeddedParameterSeparator
+
+            typestring = (TypePrefix if use_type_prefix else "") + par.type + (" " + ArrayToken if par.is_array else '')
+            if order.parameter_name < order.parameter_type:
+                output += par.name + EmbeddedTypeSeparator + typestring
+            else:
+                output += typestring + EmbeddedTypeSeparator + par.name
         return output
 
     def __add_task(self, input_text, target_text, temp_fd):
