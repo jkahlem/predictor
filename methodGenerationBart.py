@@ -1,5 +1,5 @@
 from filewrapper import FileWrapper
-from messages import Adafactor, Options
+from messages import Adafactor, ModelOptions, Options
 from methods import Method, MethodContext, MethodValues, Parameter
 from simpletransformers.seq2seq import Seq2SeqModel, Seq2SeqArgs
 import model
@@ -40,6 +40,20 @@ class MethodGenerationModelBart(model.Model):
         if model_options.num_return_sequences > 1:
             args.num_return_sequences = model_options.num_return_sequences
             args.do_sample = True
+        
+        if model_options.num_beams is not None and model_options.num_beams > 1:
+            args.num_beams = model_options.num_beams
+        
+        if model_options.top_k is not None:
+            args.top_k = model_options.top_k
+            args.do_sample = True
+        
+        if model_options.top_p is not None:
+            args.top_p = model_options.top_p
+            args.do_sample = True
+        
+        if model_options.length_penalty is not None:
+            args.length_penalty = model_options.length_penalty
         
         self.__set_adafactor_settings_to_args(model_options.adafactor, args)
 

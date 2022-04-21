@@ -162,11 +162,15 @@ class ModelOptions:
     generation_tasks: MethodGenerationTaskOptions
     max_sequence_length: int
     num_return_sequences: int
+    num_beams: int
     default_context: list[str]
     use_type_prefixing: bool
     empty_parameter_list_by_keyword: bool
     adafactor: Adafactor
     model_name: str
+    length_penalty: float
+    top_k: float
+    top_p: float
 
     def __init__(self, options: dict = dict()):
         self.batch_size = 0
@@ -179,6 +183,10 @@ class ModelOptions:
         self.empty_parameter_list_by_keyword = False
         self.adafactor = Adafactor()
         self.model_name = "t5"
+        self.num_beams = None
+        self.length_penalty = None
+        self.top_k = None
+        self.top_p = None
         if 'batchSize' in options:
             self.batch_size = options['batchSize']
         if 'numOfEpochs' in options:
@@ -199,6 +207,14 @@ class ModelOptions:
             self.adafactor = Adafactor(options['adafactor'])
         if 'modelName' in options:
             self.model_name = options['modelName']
+        if 'numBeams' in options:
+            self.num_beams = options['numBeams']
+        if 'lengthPenalty' in options:
+            self.length_penalty = options['lengthPenalty']
+        if 'topK' in options:
+            self.top_k = options['topK']
+        if 'topP' in options:
+            self.top_p = options['topP']
 
     def __str__(self) -> str:
         return "Model Options..."
