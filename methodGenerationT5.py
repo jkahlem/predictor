@@ -1,7 +1,5 @@
-from sqlite3 import paramstyle
 import tempfile
-import typing
-from messages import MethodGenerationTaskOptions, Options
+from messages import Adafactor, MethodGenerationTaskOptions, Options
 from methods import Method, MethodContext, MethodValues, Parameter
 from simpletransformers.t5 import T5Model, T5Args
 import model
@@ -10,10 +8,11 @@ from config import is_cuda_available
 from os.path import exists
 import re
 
+from modelConsts import ArrayToken, EmbeddedParameterSeparator, EmbeddedReturnSeparator, EmbeddedTypeSeparator, ParameterSeparatorToken, ReturnSeparatorToken, TypePrefix, TypeSeparatorToken
+
 GenerateParametersTask = 'generate parameters'
 AssignReturnTypeTask = 'assign returntype'
 AssignParameterTypeTask = 'assign parametertype'
-TypePrefix = 'type_'
 
 class MethodGenerationModel(model.Model):
     options: Options
@@ -46,7 +45,39 @@ class MethodGenerationModel(model.Model):
             args.num_return_sequences = model_options.num_return_sequences
             args.do_sample = True
 
+        if model_options.num_beams is not None and model_options.num_beams > 1:
+            args.num_beams = model_options.num_beams
+
+        if model_options.top_k is not None:
+            args.top_k = model_options.top_k
+            args.do_sample = True
+
+        if model_options.top_p is not None:
+            args.top_p = model_options.top_p
+            args.do_sample = True
+
+        if model_options.length_penalty is not None:
+            args.length_penalty = model_options.length_penalty
+
+        self.__set_adafactor_settings_to_args(model_options.adafactor, args)
+
         return args
+
+    def __set_adafactor_settings_to_args(self, adafactor: Adafactor, args: T5Args):
+        if adafactor.beta is not None:
+            args.adafactor_beta1 = adafactor.beta
+        if adafactor.clip_threshold is not None:
+            args.adafactor_clip_threshold = adafactor.clip_threshold
+        if adafactor.decay_rate is not None:
+            args.adafactor_decay_rate = adafactor.decay_rate
+        if adafactor.eps is not None:
+            args.adafactor_eps = adafactor.eps
+        if adafactor.scale_parameter is not None:
+            args.adafactor_scale_parameter = adafactor.scale_parameter
+        if adafactor.relative_step is not None:
+            args.adafactor_relative_step = adafactor.relative_step
+        if adafactor.warmup_init is not None:
+            args.adafactor_warmup_init = adafactor.warmup_init
 
     def exists(self) -> bool:
         return exists(self.outputs_dir_name())
@@ -56,6 +87,8 @@ class MethodGenerationModel(model.Model):
         self.__print_model_initialization()
         #used_model_type, used_model = get_model_config()
         self.model = T5Model('t5', 't5-small', args=self.__t5Args(), use_cuda=is_cuda_available())
+        self.model.tokenizer.add_tokens([TypeSeparatorToken, ReturnSeparatorToken, ParameterSeparatorToken, ArrayToken])
+        self.model.model.resize_token_embeddings(len(self.model.tokenizer))
 
     # Loads an already created/trained classification model
     def load_model(self) -> None:
@@ -101,7 +134,7 @@ class MethodGenerationModel(model.Model):
             # iterate through the predicted sequences.
             for j, parlist in enumerate(generated_parameters):
                 value = MethodValues()
-                sentences = parlist.strip().split('$')
+                sentences = parlist.strip().split(ReturnSeparatorToken)
                 par_types = parameter_types[i][j] if len(parameter_types) > 0 else None
                 self.__add_parameters_to_method_values(value, sentences[0], par_types)
 
@@ -126,8 +159,8 @@ class MethodGenerationModel(model.Model):
         # the parameter list can be "."
         if not self.__is_parameter_list_empty(parlist):
             # if the parameter list is not empty, iterate through the parameter list
-            for i, p in enumerate(parlist.split(',')):
-                p = p.split('-', maxsplit=1)
+            for i, p in enumerate(parlist.split(ParameterSeparatorToken)):
+                p = p.split(TypeSeparatorToken, maxsplit=1)
                 parameter_type = 'Object'
                 parameter_name = p[-1]
 
@@ -176,7 +209,7 @@ class MethodGenerationModel(model.Model):
         for i, method in enumerate(data):
             parameter_suggestions = parameter_names[i]
             for suggestion in parameter_suggestions:
-                parameters = suggestion.split(',')
+                parameters = suggestion.split(ParameterSeparatorToken)
                 for par in parameters:
                     inputs.append(AssignParameterTypeTask + ': ' + self.__get_generate_parameter_type_input(method, par))
 
@@ -196,7 +229,7 @@ class MethodGenerationModel(model.Model):
             # iterate through each suggestion and increment the offset
             for _ in enumerate(parameter_names[i]):
                 types_per_suggestion = list()
-                for _ in enumerate(parameter_names[i].split(',')):
+                for _ in enumerate(parameter_names[i].split(ParameterSeparatorToken)):
                     types_per_suggestion.append(predictions[offset])
                     offset = offset + 1
                 suggestions.append(types_per_suggestion)
@@ -265,13 +298,13 @@ class MethodGenerationModel(model.Model):
         context_types = default_context + context.types
         if self.options.model_options.use_type_prefixing:
             context_types = [TypePrefix+x for x in context_types]
-        return " context: " + ", ".join(context_types)
+        return " context: " + EmbeddedParameterSeparator.join(context_types)
 
     def __get_compound_task_output(self, values: MethodValues) -> str:
         tasks = self.options.model_options.generation_tasks.parameter_names
         output = self.__get_generate_parameters_output(values.parameters, tasks.with_parameter_types)
         if tasks.with_return_type:
-            output += " $ " + values.returnType + ""
+            output += EmbeddedReturnSeparator + values.returnType
 
         return output
 
@@ -282,9 +315,9 @@ class MethodGenerationModel(model.Model):
         use_type_prefix = self.options.model_options.use_type_prefixing
         for i, par in enumerate(parameters):
             if i > 0:
-                output += ", "
+                output += EmbeddedParameterSeparator
             if with_types:
-                output += (TypePrefix if use_type_prefix else "") + par.type +  ("[] - " if par.is_array else " - ")
+                output += (TypePrefix if use_type_prefix else "") + par.type + (" " + ArrayToken if par.is_array else "") + EmbeddedTypeSeparator
             output += par.name
         return output + " ."
 

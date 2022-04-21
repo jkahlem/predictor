@@ -1,5 +1,5 @@
 from filewrapper import FileWrapper
-from messages import Adafactor, ModelOptions, Options
+from messages import Adafactor, Options
 from methods import Method, MethodContext, MethodValues, Parameter
 from simpletransformers.seq2seq import Seq2SeqModel, Seq2SeqArgs
 import model
@@ -226,13 +226,13 @@ class MethodGenerationModelBart(model.Model):
         context_types = default_context + context.types
         if self.options.model_options.use_type_prefixing:
             context_types = [TypePrefix+x for x in context_types]
-        return " context: " + (" " + ParameterSeparatorToken + " ").join(context_types)
+        return " context: " + EmbeddedParameterSeparator.join(context_types)
 
     def __get_compound_task_output(self, values: MethodValues) -> str:
         tasks = self.options.model_options.generation_tasks.parameter_names
         output = self.__get_generate_parameters_output(values.parameters, tasks.with_parameter_types)
         if tasks.with_return_type:
-            output += " " + ReturnSeparatorToken + " " + values.returnType + ""
+            output += EmbeddedReturnSeparator + values.returnType + ""
 
         return output
 
@@ -245,8 +245,8 @@ class MethodGenerationModelBart(model.Model):
             if i > 0:
                 output += " " + ParameterSeparatorToken + " "
             if with_types:
-                array_extension = ((ArrayToken + " ") if par.is_array else '')
-                output += (TypePrefix if use_type_prefix else "") + par.type + " " + array_extension + TypeSeparatorToken + " "
+                array_extension = ((" " + ArrayToken) if par.is_array else '')
+                output += (TypePrefix if use_type_prefix else "") + par.type + array_extension + EmbeddedTypeSeparator
             output += par.name
         return output
 
