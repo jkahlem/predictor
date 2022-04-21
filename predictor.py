@@ -3,7 +3,7 @@ import logging
 import errno
 import os
 import threading
-from languageGenerationModel import MethodGenerationModel
+from methodGenerationT5 import MethodGenerationModel
 from methodGenerationBart import MethodGenerationModelBart
 
 from messages import ExistsMessage, Message, EvaluateMessage, Options, PredictMessage, TrainMessage, parse_message_from_fd, SupportedModels
@@ -176,7 +176,7 @@ def get_model(options: Options) -> ModelHolder:
             if options.model_options.model_name == 'bart':
                 prediction_models[options.target_model] = ModelHolder(MethodGenerationModelBart())
             elif options.model_options.model_name == 't5':
-                prediction_models[options.target_model] = ModelHolder(MethodGenerationModel)
+                prediction_models[options.target_model] = ModelHolder(MethodGenerationModel())
             else:
                 raise Exception('Unsupported model for method generation task: ' + options.model_options.model_name)
         else:
