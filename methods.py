@@ -57,7 +57,7 @@ class MethodValues:
         p.name = name
         if type.endswith(ArrayToken):
             p.is_array = True
-            p.type = type[:-2]
+            p.type = type[:-len(ArrayToken)]
         else:
             p.type = type
         self.parameters.append(p)
