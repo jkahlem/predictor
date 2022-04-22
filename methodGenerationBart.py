@@ -109,6 +109,7 @@ class MethodGenerationModelBart(model.Model):
         return self.__map_predictions_to_method_values(parameters)
 
     def __map_predictions_to_method_values(self, predictions: list[list[str]]) -> list[list[MethodValues]]:
+        order = self.options.model_options.output_order
         results = list()
         # iterate through result. result might be list[str] or list[list[str]] depending on num return sequences. 
         for _, generated_parameters in enumerate(predictions):
@@ -121,10 +122,15 @@ class MethodGenerationModelBart(model.Model):
                     print(parlist)
                 value = MethodValues()
                 sentences = parlist.strip().split(ReturnSeparatorToken)
-                self.__add_parameters_to_method_values(value, sentences[0])
-
+                parameter_list, return_type = '', ''
                 if len(sentences) == 2:
-                    value.set_return_type(sentences[1])
+                    parameter_list = sentences[0 if order.parameter_name < order.return_type else 1]
+                    return_type = sentences[0 if order.parameter_name > order.return_type else 1]
+                    value.set_return_type(return_type)
+                else:
+                    parameter_list = sentences[0]
+
+                self.__add_parameters_to_method_values(value, parameter_list)
 
                 # get the hash for the current state to prevent adding the same suggestions multiple times
                 value_hash = value.current_state_hash()
@@ -136,20 +142,19 @@ class MethodGenerationModelBart(model.Model):
         return results
 
     def __add_parameters_to_method_values(self, value: MethodValues, parlist: str) -> MethodValues:
-        # the sequence should be a parameter list (<type>-<name>, <type>-<name>. returns: <type>.)
-        # the parameter list can be "."
+        order = self.options.model_options.output_order
+
         if not self.__is_parameter_list_empty(parlist):
             # if the parameter list is not empty, iterate through the parameter list
             for _, p in enumerate(parlist.split(ParameterSeparatorToken)):
                 p = p.split(TypeSeparatorToken, maxsplit=1)
-                parameter_type = 'Object'
-                parameter_name = p[-1]
+                parameter_type, parameter_name = 'Object', p[-1]
 
                 if len(p) == 2:
-                    parameter_type = p[0]
+                    parameter_name = p[0 if order.parameter_name < order.parameter_type else 1]
+                    parameter_type = p[0 if order.parameter_name > order.parameter_type else 1]
 
-                parameter_type = parameter_type.strip()
-                value.add_parameter(parameter_name.replace('.', '').strip(), parameter_type)
+                value.add_parameter(parameter_name.replace('.', '').strip(), parameter_type.strip())
 
     def __is_parameter_list_empty(self, parlist: str) -> bool:
         if self.options.model_options.empty_parameter_list_by_keyword:

@@ -126,6 +126,8 @@ class MethodGenerationModel(model.Model):
         return_types: list[list[str]],
         parameter_types: list[list[list[str]]]) -> list[list[MethodValues]]:
         results = list()
+        order = self.options.model_options.output_order
+
         # iterate through result. result might be list[str] or list[list[str]] depending on num return sequences. 
         for i, generated_parameters in enumerate(predictions):
             value_suggestions = list()
@@ -135,15 +137,23 @@ class MethodGenerationModel(model.Model):
             for j, parlist in enumerate(generated_parameters):
                 value = MethodValues()
                 sentences = parlist.strip().split(ReturnSeparatorToken)
-                par_types = parameter_types[i][j] if len(parameter_types) > 0 else None
-                self.__add_parameters_to_method_values(value, sentences[0], par_types)
 
-                # if return types are predicted in a separate task
-                if len(return_types) == len(predictions):
-                    value.set_return_type(return_types[i][j])
-                # else if return type prediction is a compound task, then pick the second sentence for it.
-                elif len(sentences) == 2 and self.__generation_tasks().parameter_names.with_return_type:
-                    value.set_return_type(sentences[1])
+                if len(sentences) == 2:
+                    # TODO: this does not work with non-compound tasks. Maybe, remove even non-compound tasks?
+                    return_type = sentences[0 if order.return_type < order.parameter_name else 1]
+                    parameter_list = sentences[0 if order.return_type > order.parameter_name else 1]
+                    self.__add_parameters_to_method_values(value, parameter_list, None)
+                    value.set_return_type(return_type)
+                else:
+                    par_types = parameter_types[i][j] if len(parameter_types) > 0 else None
+                    self.__add_parameters_to_method_values(value, sentences[0], par_types)
+
+                    # if return types are predicted in a separate task
+                    if len(return_types) == len(predictions):
+                        value.set_return_type(return_types[i][j])
+                    # else if return type prediction is a compound task, then pick the second sentence for it.
+                    elif len(sentences) == 2 and self.__generation_tasks().parameter_names.with_return_type:
+                        value.set_return_type(sentences[1])
 
                 # get the hash for the current state to prevent adding the same suggestions multiple times
                 value_hash = value.current_state_hash()
@@ -155,21 +165,21 @@ class MethodGenerationModel(model.Model):
         return results
 
     def __add_parameters_to_method_values(self, value: MethodValues, parlist: str, types: list[str]) -> MethodValues:
+        order = self.options.model_options.output_order
         # the sequence should be a parameter list (<type>-<name>, <type>-<name>. returns: <type>.)
         # the parameter list can be "."
         if not self.__is_parameter_list_empty(parlist):
             # if the parameter list is not empty, iterate through the parameter list
             for i, p in enumerate(parlist.split(ParameterSeparatorToken)):
                 p = p.split(TypeSeparatorToken, maxsplit=1)
-                parameter_type = 'Object'
-                parameter_name = p[-1]
+                parameter_type, parameter_name = 'Object', ''
 
-                # if types are predicted in a separate task, use that type
-                if types is not None and len(types) > 0:
+                if len(p) == 2:
+                    parameter_name = p[0 if order.parameter_name < order.parameter_type else 1]
+                    parameter_type = p[0 if order.parameter_name > order.parameter_type else 1]
+                elif types is not None and len(types) > 0:
+                    # if types are predicted in a separate task, use that type
                     parameter_type = types[i]
-                # otherwise if the parameter can be splitted into two values, the first value is the type.
-                elif len(p) == 2:
-                    parameter_type = p[0]
 
                 parameter_type = parameter_type.strip()
                 value.add_parameter(parameter_name.replace('.', '').strip(), parameter_type)
@@ -312,8 +322,8 @@ class MethodGenerationModel(model.Model):
         if len(parameters) == 0:
             return 'void .' if self.options.model_options.empty_parameter_list_by_keyword else '.'
         output = ''
-        use_type_prefix = self.options.model_options.use_type_prefixing
         order = self.options.model_options.output_order
+
         for i, par in enumerate(parameters):
             if i > 0:
                 output += EmbeddedParameterSeparator
