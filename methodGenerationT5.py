@@ -9,7 +9,7 @@ from config import is_cuda_available
 from os.path import exists
 import re
 
-from modelConsts import ArrayToken, EmbeddedParameterSeparator, EmbeddedReturnSeparator, EmbeddedTypeSeparator, ParameterSeparatorToken, ReturnSeparatorToken, TypeSeparatorToken
+from modelConsts import ArrayToken, EmbeddedClassSeparator, EmbeddedParameterSeparator, EmbeddedReturnSeparator, EmbeddedTypeSeparator, ParameterSeparatorToken, ReturnSeparatorToken, TypeSeparatorToken
 
 GenerateParametersTask = 'generate parameters'
 AssignReturnTypeTask = 'assign returntype'
@@ -278,7 +278,7 @@ class MethodGenerationModel(model.Model):
             self.__add_method_to_frame(method, temp_fd)
             i += 1
         temp_fd.seek(0)
-        frame: pd.DataFrame = pd.read_csv(temp_fd, header=None, names=['prefix', 'input_text', 'target_text'], sep=";", na_filter=False)
+        frame: pd.DataFrame = pd.read_csv(temp_fd.file_descriptor(), header=None, names=['prefix', 'input_text', 'target_text'], sep=";", na_filter=False)
         temp_fd.close()
         print("Done.")
         return frame
@@ -300,8 +300,8 @@ class MethodGenerationModel(model.Model):
     def __get_generate_parameters_input(self, context: MethodContext) -> str:
         compound_task = self.options.model_options.generation_tasks.parameter_names
         if compound_task.with_parameter_types or compound_task.with_return_type:
-            return 'method: ' + context.methodName + " . class: " + context.className + ' .' + self.__get_context_parameter(context)
-        return 'method: ' + context.methodName + " . class: " + context.className + ' .'
+            return 'method: ' + context.methodName + " . class: " + self.__join_classes(context.className) + ' .' + self.__get_context_parameter(context)
+        return 'method: ' + context.methodName + " . class: " + self.__join_classes(context.className) + ' .'
 
     def __get_context_parameter(self, context: MethodContext) -> str:
         default_context = self.options.model_options.default_context
@@ -349,7 +349,7 @@ class MethodGenerationModel(model.Model):
             temp_fd)
 
     def __get_generate_return_type_input(self, context: MethodContext) -> str:
-        return 'method: ' + context.methodName + " . class: " + context.className + ' .' + self.__get_context_parameter(context)
+        return 'method: ' + context.methodName + " . class: " + self.__join_classes(context.className) + ' .' + self.__get_context_parameter(context)
 
     def __add_generate_parameter_type_task(self, method: Method, temp_fd):
         for par in method.values.parameters:
@@ -359,14 +359,17 @@ class MethodGenerationModel(model.Model):
                 temp_fd)
 
     def __get_generate_parameter_type_input(self, context: MethodContext, parName: str) -> str:
-        return ' parameter: ' + parName + 'method: ' + context.methodName + " . class: " + context.className + ' .' + self.__get_context_parameter(context)
+        return ' parameter: ' + parName + 'method: ' + context.methodName + " . class: " + self.__join_classes(context.className) + ' .' + self.__get_context_parameter(context)
 
     def __add_task(self, prefix, input_text, target_text, temp_fd):
         s: str = prefix + ";" + input_text + ";" + target_text + "\n"
-        temp_fd.write(s.encode('utf-8'))
+        temp_fd.write(s)
     
     def __generation_tasks(self) -> MethodGenerationTaskOptions:
         return self.options.model_options.generation_tasks
+
+    def __join_classes(self, classes: list[str]) -> str:
+        return EmbeddedClassSeparator.join(classes)
 
     # method generation is not cacheable (or rather it makes no sense to cache it) as the input sequences get very complex
     # (due to class name, context types, static state etc.) and it happens very rarely that predictions on the same input are requested.

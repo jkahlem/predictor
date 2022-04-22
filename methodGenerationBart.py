@@ -219,10 +219,8 @@ class MethodGenerationModelBart(model.Model):
         static = 'static ' if context.is_static else ''
         compound_task = self.options.model_options.generation_tasks.parameter_names
         if compound_task.with_parameter_types or compound_task.with_return_type:
-            return static + context.className + ' ' + context.methodName + ' ' + self.__get_context_parameter(context)
-        return static + context.className + ' ' + context.methodName
-            #return 'method: ' + static + context.methodName + " . class: " + context.className + ' .' + self.__get_context_parameter(context)
-        #return 'method: ' + static + context.methodName + " . class: " + context.className + ' .'
+            return static + self.__join_classes(context.className) + ' ' + context.methodName + ' ' + self.__get_context_parameter(context)
+        return static + self.__join_classes(context.className) + ' ' + context.methodName
 
     def __get_context_parameter(self, context: MethodContext) -> str:
         default_context = self.options.model_options.default_context
@@ -258,6 +256,9 @@ class MethodGenerationModelBart(model.Model):
     def __add_task(self, input_text, target_text, temp_fd):
         s: str = input_text + ";<s> " + target_text + "\n"
         temp_fd.write(s)
+
+    def __join_classes(self, classes: list[str]) -> str:
+        return EmbeddedClassSeparator.join(classes)
 
     # method generation is not cacheable (or rather it makes no sense to cache it) as the input sequences get very complex
     # (due to class name, context types, static state etc.) and it happens very rarely that predictions on the same input are requested.

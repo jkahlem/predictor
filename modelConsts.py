@@ -1,8 +1,10 @@
 TypeSeparatorToken = '[tsp]'
 ReturnSeparatorToken = '[rsp]'
 ParameterSeparatorToken = '[psp]'
+ClassSeparatorToken = '[csp]'
 ArrayToken = '[arr]'
 
 EmbeddedTypeSeparator = ' ' + TypeSeparatorToken + ' '
 EmbeddedReturnSeparator = ' ' + ReturnSeparatorToken + ' '
 EmbeddedParameterSeparator = ' ' + ParameterSeparatorToken + ' '
+EmbeddedClassSeparator = ' ' + ClassSeparatorToken + ' '

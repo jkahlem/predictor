@@ -24,7 +24,7 @@ class Parameter:
         pass
 
 class MethodContext:
-    className: str
+    className: list[str]
     is_static: bool
     methodName: str
     types: list[str]
