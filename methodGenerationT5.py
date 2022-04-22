@@ -86,7 +86,10 @@ class MethodGenerationModel(model.Model):
     def init_new_model(self) -> None:
         self.__print_model_initialization()
         #used_model_type, used_model = get_model_config()
-        self.model = T5Model('t5', 't5-small', args=self.__t5Args(), use_cuda=is_cuda_available())
+        self.model = T5Model('t5',
+            self.options.model_options.model_name,
+            args=self.__t5Args(),
+            use_cuda=is_cuda_available())
         self.model.tokenizer.add_tokens([TypeSeparatorToken, ReturnSeparatorToken, ParameterSeparatorToken, ArrayToken])
         self.model.model.resize_token_embeddings(len(self.model.tokenizer))
 

@@ -173,12 +173,12 @@ def get_model(options: Options) -> ModelHolder:
         if options.target_model == SupportedModels.ReturnTypesPrediction:
             prediction_models[options.target_model] = ModelHolder(ReturnTypesPredictionModel())
         elif options.target_model == SupportedModels.MethodGenerator:
-            if options.model_options.model_name == 'bart':
+            if options.model_options.model_type == 'bart':
                 prediction_models[options.target_model] = ModelHolder(MethodGenerationModelBart())
-            elif options.model_options.model_name == 't5':
+            elif options.model_options.model_type == 't5':
                 prediction_models[options.target_model] = ModelHolder(MethodGenerationModel())
             else:
-                raise Exception('Unsupported model for method generation task: ' + options.model_options.model_name)
+                raise Exception('Unsupported model for method generation task: ' + options.model_options.model_type)
         else:
             prediction_model_lock.release()
             raise Exception("Unsupported target model: " + options.target_model)

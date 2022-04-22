@@ -183,6 +183,7 @@ class ModelOptions:
     default_context: list[str]
     empty_parameter_list_by_keyword: bool
     adafactor: Adafactor
+    model_type: str
     model_name: str
     length_penalty: float
     top_k: float
@@ -198,7 +199,8 @@ class ModelOptions:
         self.default_context = list()
         self.empty_parameter_list_by_keyword = False
         self.adafactor = Adafactor()
-        self.model_name = "t5"
+        self.model_type = "t5"
+        self.model_name = "t5-small"
         self.num_beams = 0
         self.length_penalty = None
         self.top_k = None
@@ -220,6 +222,10 @@ class ModelOptions:
             self.empty_parameter_list_by_keyword = options['emptyParameterListByKeyword']
         if 'adafactor' in options:
             self.adafactor = Adafactor(options['adafactor'])
+        if 'modelType' in options:
+            self.model_type = options['modelType']
+            if self.model_type == 'bart':
+                self.model_name = 'facebook/bart-base'
         if 'modelName' in options:
             self.model_name = options['modelName']
         if 'numBeams' in options:

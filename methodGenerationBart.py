@@ -82,7 +82,10 @@ class MethodGenerationModelBart(model.Model):
     def init_new_model(self) -> None:
         self.__print_model_initialization()
         #used_model_type, used_model = get_model_config()
-        self.model = Seq2SeqModel(encoder_decoder_type="bart", encoder_decoder_name="facebook/bart-base", args=self.__seq2seq_args(), use_cuda=is_cuda_available())
+        self.model = Seq2SeqModel(encoder_decoder_type="bart",
+            encoder_decoder_name=self.options.model_options.model_name,
+            args=self.__seq2seq_args(),
+            use_cuda=is_cuda_available())
         self.model.encoder_tokenizer.add_tokens([TypeSeparatorToken, ReturnSeparatorToken, ParameterSeparatorToken, ArrayToken])
         self.model.model.resize_token_embeddings(len(self.model.encoder_tokenizer))
         self.model.decoder_tokenizer.add_tokens([TypeSeparatorToken, ReturnSeparatorToken, ParameterSeparatorToken, ArrayToken])
