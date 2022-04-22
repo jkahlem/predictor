@@ -172,6 +172,8 @@ class OutputComponentOrder:
         if 'returnType' in order:
             self.return_type = order['returnType']
 
+    def is_valid(self) -> bool:
+        return len({self.parameter_name, self.parameter_type, self.return_type}) == 3
 
 class ModelOptions:
     batch_size: int

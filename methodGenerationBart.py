@@ -157,7 +157,7 @@ class MethodGenerationModelBart(model.Model):
                     parameter_name = p[0 if order.parameter_name < order.parameter_type else 1]
                     parameter_type = p[0 if order.parameter_name > order.parameter_type else 1]
 
-                value.add_parameter(parameter_name.replace('.', '').strip(), parameter_type.strip())
+                value.add_parameter(parameter_name.replace('.', '').strip(), parameter_type.replace('.', '').strip())
 
     def __is_parameter_list_empty(self, parlist: str) -> bool:
         if self.options.model_options.empty_parameter_list_by_keyword:

@@ -1,4 +1,5 @@
 import tempfile
+from filewrapper import FileWrapper
 from messages import Adafactor, MethodGenerationTaskOptions, Options
 from methods import Method, MethodContext, MethodValues, Parameter
 from simpletransformers.t5 import T5Model, T5Args
@@ -185,7 +186,7 @@ class MethodGenerationModel(model.Model):
                     parameter_type = types[i]
 
                 parameter_type = parameter_type.strip()
-                value.add_parameter(parameter_name.replace('.', '').strip(), parameter_type)
+                value.add_parameter(parameter_name.replace('.', '').strip(), parameter_type.replace('.', '').strip())
 
     def __is_parameter_list_empty(self, parlist: str) -> bool:
         if self.options.model_options.empty_parameter_list_by_keyword:
@@ -269,7 +270,7 @@ class MethodGenerationModel(model.Model):
     def convert_methods_to_frame(self, data: list[Method]) -> pd.DataFrame:
         print("Convert list of " + str(len(data)) + " methods to frame ...")
         i, n = 0, 1000
-        temp_fd = tempfile.TemporaryFile()
+        temp_fd = FileWrapper(is_temp=False)
         for method in data:
             if i > n:
                 print("[" + str(i) + "/" + str(len(data)) + "] Converting methods ...")

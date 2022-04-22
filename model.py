@@ -209,7 +209,7 @@ class ModelHolder():
             if not self.model.get_identifier_for_method(m) in self.prediction_cache:
                 unpredicted.append(m)
         return unpredicted
-    
+
     def set_options(self, options: Options) -> None:
         self.mutex.acquire()
 
@@ -217,11 +217,15 @@ class ModelHolder():
             self.mutex.release()
             return
 
+        if not options.model_options.output_order.is_valid():
+            self.mutex.release()
+            raise Exception('invalid output order')
+
         self.model.set_options(options)
         self.model_identifier = options.identifier
 
         self.mutex.release()
-    
+
     def exists(self) -> bool:
         self.mutex.acquire()
 
