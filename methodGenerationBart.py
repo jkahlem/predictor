@@ -207,10 +207,7 @@ class MethodGenerationModelBart(model.Model):
 
     def __get_generate_parameters_input(self, context: MethodContext) -> str:
         static = 'static ' if context.is_static else ''
-        compound_task = self.options.model_options.generation_tasks.parameter_names
-        if compound_task.with_parameter_types or compound_task.with_return_type:
-            return static + self.__join_classes(context.className) + ', ' + context.methodName + self.__get_context_parameter(context) + '.'
-        return static + self.__join_classes(context.className) + ', ' + context.methodName + '.'
+        return static + self.__join_classes(context.className) + ', ' + context.methodName + self.__get_context_parameter(context) + '.'
 
     def __get_context_parameter(self, context: MethodContext) -> str:
         default_context = self.options.model_options.default_context
