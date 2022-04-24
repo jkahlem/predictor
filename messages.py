@@ -156,6 +156,24 @@ class Adafactor:
     def __repr__(self) -> str:
         return "Options..."
 
+class Adam:
+    learning_rate: float
+    eps: float
+
+    def __init__(self, options: dict = dict()):
+        self.learning_rate = None
+        self.eps = None
+        if 'eps' in options:
+            self.eps = options['eps']
+        if 'learningRate' in options:
+            self.learning_rate = options['learningRate']
+
+    def __str__(self) -> str:
+        return "Options..."
+
+    def __repr__(self) -> str:
+        return "Options..."
+
 class OutputComponentOrder:
     return_type: int
     parameter_type: int
@@ -185,6 +203,7 @@ class ModelOptions:
     default_context: list[str]
     empty_parameter_list_by_keyword: bool
     adafactor: Adafactor
+    adam: Adam
     model_type: str
     model_name: str
     length_penalty: float
@@ -201,6 +220,7 @@ class ModelOptions:
         self.default_context = list()
         self.empty_parameter_list_by_keyword = False
         self.adafactor = Adafactor()
+        self.adam = Adam()
         self.model_type = "t5"
         self.model_name = "t5-small"
         self.num_beams = 0
@@ -224,6 +244,8 @@ class ModelOptions:
             self.empty_parameter_list_by_keyword = options['emptyParameterListByKeyword']
         if 'adafactor' in options:
             self.adafactor = Adafactor(options['adafactor'])
+        if 'adam' in options:
+            self.adam = Adam(options['adam'])
         if 'modelType' in options:
             self.model_type = options['modelType']
             if self.model_type == 'bart':

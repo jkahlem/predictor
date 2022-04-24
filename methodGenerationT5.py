@@ -1,4 +1,3 @@
-import tempfile
 from filewrapper import FileWrapper
 from messages import Adafactor, MethodGenerationTaskOptions, Options
 from methods import Method, MethodContext, MethodValues, Parameter
@@ -24,9 +23,9 @@ class MethodGenerationModel(model.Model):
     # prints a message if cuda is used or not
     def __print_model_initialization(self) -> None:
         if is_cuda_available():
-            print('Initialize language modelling model using CUDA')
+            print('Initialize T5-based method generation model using CUDA')
         else:
-            print('Initialize language modelling model without CUDA')
+            print('Initialize T5-based method generation model without CUDA')
 
     def __t5Args(self) -> T5Args:
         model_options = self.options.model_options

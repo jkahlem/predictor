@@ -1,5 +1,5 @@
 from filewrapper import FileWrapper
-from messages import Adafactor, Options
+from messages import Adafactor, Adam, Options
 from methods import Method, MethodContext, MethodValues, Parameter
 from simpletransformers.seq2seq import Seq2SeqModel, Seq2SeqArgs
 import model
@@ -18,9 +18,9 @@ class MethodGenerationModelBart(model.Model):
     # prints a message if cuda is used or not
     def __print_model_initialization(self) -> None:
         if is_cuda_available():
-            print('Initialize language modelling model using CUDA')
+            print('Initialize BART-based method generation model using CUDA')
         else:
-            print('Initialize language modelling model without CUDA')
+            print('Initialize BART-based method generation model without CUDA')
 
     def __seq2seq_args(self) -> Seq2SeqArgs:
         model_options = self.options.model_options
@@ -55,25 +55,15 @@ class MethodGenerationModelBart(model.Model):
         if model_options.length_penalty is not None:
             args.length_penalty = model_options.length_penalty
         
-        self.__set_adafactor_settings_to_args(model_options.adafactor, args)
+        self.__set_adam_settings_to_args(model_options.adam, args)
 
         return args
     
-    def __set_adafactor_settings_to_args(self, adafactor: Adafactor, args: Seq2SeqArgs):
-        if adafactor.beta is not None:
-            args.adafactor_beta1 = adafactor.beta
-        if adafactor.clip_threshold is not None:
-            args.adafactor_clip_threshold = adafactor.clip_threshold
-        if adafactor.decay_rate is not None:
-            args.adafactor_decay_rate = adafactor.decay_rate
-        if adafactor.eps is not None:
-            args.adafactor_eps = adafactor.eps
-        if adafactor.scale_parameter is not None:
-            args.adafactor_scale_parameter = adafactor.scale_parameter
-        if adafactor.relative_step is not None:
-            args.adafactor_relative_step = adafactor.relative_step
-        if adafactor.warmup_init is not None:
-            args.adafactor_warmup_init = adafactor.warmup_init
+    def __set_adam_settings_to_args(self, adam: Adam, args: Seq2SeqArgs):
+        if adam.eps is not None:
+            args.adam_epsilon = adam.eps
+        if adam.learning_rate is not None:
+            args.learning_rate = adam.learning_rate
 
     def exists(self) -> bool:
         return exists(self.outputs_dir_name())
@@ -219,8 +209,8 @@ class MethodGenerationModelBart(model.Model):
         static = 'static ' if context.is_static else ''
         compound_task = self.options.model_options.generation_tasks.parameter_names
         if compound_task.with_parameter_types or compound_task.with_return_type:
-            return static + self.__join_classes(context.className) + ' ' + context.methodName + ' ' + self.__get_context_parameter(context)
-        return static + self.__join_classes(context.className) + ' ' + context.methodName
+            return static + self.__join_classes(context.className) + ', ' + context.methodName + self.__get_context_parameter(context) + '.'
+        return static + self.__join_classes(context.className) + ', ' + context.methodName + '.'
 
     def __get_context_parameter(self, context: MethodContext) -> str:
         default_context = self.options.model_options.default_context
