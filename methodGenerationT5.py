@@ -192,7 +192,7 @@ class MethodGenerationModel(model.Model):
 
     # path addition for the outputs dir 
     def outputs_dir_name(self) -> str:
-        return self.__parent_dir() + 'outputs/'
+        return self.__parent_dir() + 'outputs/' +  (self.options.checkpoint + '/' if len(self.options.checkpoint) > 0 else '')
 
     # the main directory for this model
     def __parent_dir(self) -> str:

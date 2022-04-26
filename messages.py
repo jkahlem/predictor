@@ -236,9 +236,11 @@ class Options:
     identifier: str
     retrain: bool
     model_options: ModelOptions
+    checkpoint: str
 
     def __init__(self, options: dict = dict()):
         self.retrain = False
+        self.checkpoint = ''
         if 'type' in options:
             self.target_model = SupportedModels(options['type'])
         if 'identifier' in options:
@@ -249,6 +251,8 @@ class Options:
             self.labels = options['labels']
         if 'modelOptions' in options:
             self.model_options = ModelOptions(options['modelOptions'])
+        if 'checkpoint' in options:
+            self.checkpoint = options['checkpoint']
 
     def __str__(self) -> str:
         return "Options..."
