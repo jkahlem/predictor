@@ -237,3 +237,15 @@ class ModelHolder():
 
         self.mutex.release()
         return e
+
+    def get_output_dir(self) -> str:
+        self.mutex.acquire()
+
+        if self.model is None:
+            self.mutex.release()
+            return
+
+        e = self.model.outputs_dir_name()
+
+        self.mutex.release()
+        return e

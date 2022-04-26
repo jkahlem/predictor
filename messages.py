@@ -304,7 +304,18 @@ class ExistsMessage:
         self.id = msg['id']
 
     def __str__(self) -> str:
-        return "Predict message..."
+        return "Exists message..."
 
     def __repr__(self) -> str:
-        return "Predict message..."
+        return "Exists message..."
+
+class GetCheckpointsMessage:
+    def __init__(self, msg: dict) -> None:
+        self.options = Options(msg['params']['options'])
+        self.id = msg['id']
+
+    def __str__(self) -> str:
+        return "GetCheckpoints message..."
+
+    def __repr__(self) -> str:
+        return "GetCheckpoints message..."

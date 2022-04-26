@@ -25,7 +25,8 @@ class MethodGenerationModelBart(model.Model):
     def __seq2seq_args(self) -> Seq2SeqArgs:
         model_options = self.options.model_options
         args = Seq2SeqArgs(cache_dir=self.cache_dir_name(), output_dir=self.outputs_dir_name(), num_train_epochs=1,
-            save_steps=5000)
+            dataloader_num_workers=1,
+            save_steps=2500)
 
         if model_options.num_of_epochs > 0:
             args.num_train_epochs = model_options.num_of_epochs

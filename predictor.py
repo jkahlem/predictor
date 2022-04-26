@@ -6,7 +6,7 @@ import threading
 from methodGenerationT5 import MethodGenerationModel
 from methodGenerationBart import MethodGenerationModelBart
 
-from messages import ExistsMessage, Message, EvaluateMessage, Options, PredictMessage, TrainMessage, parse_message_from_fd, SupportedModels
+from messages import ExistsMessage, GetCheckpointsMessage, Message, EvaluateMessage, Options, PredictMessage, TrainMessage, parse_message_from_fd, SupportedModels
 from config import get_port, get_script_dir, is_cuda_available, load_config
 from model import ModelHolder
 from returnTypesPredictionModel import ReturnTypesPredictionModel
@@ -52,6 +52,8 @@ class ConnectionHandler:
             self.__handle_predict_message(PredictMessage(msg))
         elif msg['method'] == "exists":
             self.__handle_exists_message(ExistsMessage(msg))
+        elif msg['method'] == 'getCheckpoints':
+            self.__handle_get_checkpoints_message(GetCheckpointsMessage(msg))
         else:
             self.__send_error_msg(msg['id'], JsonRpcErrorCodes.MethodNotFound, "Method not found: '" + msg['method'] + "'")
 
@@ -70,7 +72,18 @@ class ConnectionHandler:
         result = model.exists()
         response = self.__create_jsonrpc_response(msg.id, result)
         self.__send_str_to_conn(str(Message(None, response)))
-    
+
+    # Handles a train message which trains a new model
+    def __handle_get_checkpoints_message(self, msg: GetCheckpointsMessage) -> None:
+        model = get_model(msg.options)
+        directory = model.get_output_dir()
+        checkpoints = list()
+        for file in os.listdir(directory):
+            if file.startswith('checkpoint'):
+                checkpoints.append(file)
+        response = self.__create_jsonrpc_response(msg.id, dict(checkpoints = checkpoints))
+        self.__send_str_to_conn(str(Message(None, response)))
+
     # Handles a train message which trains a new model
     def __handle_evaluate_message(self, msg: EvaluateMessage) -> None:
         model = get_model(msg.options)
