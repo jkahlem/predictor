@@ -90,6 +90,18 @@ class Method:
     def __repr__(self) -> str:
         pass
 
+class Model:
+    model_name: str
+    checkpoints: list[str]
+    def __init__(self) -> None:
+        self.checkpoints = list()
+
+    def __str__(self) -> str:
+        pass
+
+    def __repr__(self) -> str:
+        pass
+
 class MethodEncoder(json.JSONEncoder):
     def default(self, obj):
         if isinstance(obj, MethodValues):
@@ -98,4 +110,6 @@ class MethodEncoder(json.JSONEncoder):
             return dict({'name': obj.name, 'type': obj.type})
         if isinstance(obj, JsonRpcErrorCodes):
             return obj.value
+        if isinstance(obj, Model):
+            return dict({'modelName': obj.model_name, 'checkpoints': obj.checkpoints})
         return json.JSONEncoder.default(self, obj)

@@ -6,8 +6,9 @@ import threading
 from methodGenerationT5 import MethodGenerationModel
 from methodGenerationBart import MethodGenerationModelBart
 
-from messages import ExistsMessage, GetCheckpointsMessage, Message, EvaluateMessage, Options, PredictMessage, TrainMessage, parse_message_from_fd, SupportedModels
+from messages import ExistsMessage, GetCheckpointsMessage, GetModelsMessage, Message, EvaluateMessage, Options, PredictMessage, TrainMessage, parse_message_from_fd, SupportedModels
 from config import get_port, get_script_dir, is_cuda_available, load_config
+from methods import Model
 from model import ModelHolder
 from returnTypesPredictionModel import ReturnTypesPredictionModel
 from jsonrpcErrorCodes import JsonRpcErrorCodes
@@ -54,6 +55,8 @@ class ConnectionHandler:
             self.__handle_exists_message(ExistsMessage(msg))
         elif msg['method'] == 'getCheckpoints':
             self.__handle_get_checkpoints_message(GetCheckpointsMessage(msg))
+        elif msg['method'] == 'getModels':
+            self.__handle_get_models_message(GetModelsMessage(msg))
         else:
             self.__send_error_msg(msg['id'], JsonRpcErrorCodes.MethodNotFound, "Method not found: '" + msg['method'] + "'")
 
@@ -82,6 +85,29 @@ class ConnectionHandler:
             if file.startswith('checkpoint'):
                 checkpoints.append(file)
         response = self.__create_jsonrpc_response(msg.id, checkpoints)
+        self.__send_str_to_conn(str(Message(None, response)))
+
+    # Handles a train message which trains a new model
+    def __handle_get_models_message(self, msg: GetModelsMessage) -> None:
+        output_dir = ''
+        if msg.model_type == SupportedModels.MethodGenerator:
+            output_dir = 'models/language_generation/'
+        elif msg.model_type == SupportedModels.ReturnTypesPrediction:
+            output_dir = 'models/returntypes/'
+        else:
+            raise Exception('Unsupported model type: ' + str(msg.model_type))
+
+        models = list()
+        for root, dirs, _ in os.walk(output_dir):
+            if root.endswith(os.path.sep + 'outputs'):
+                model = Model()
+                model.model_name = root[len(output_dir):-len(os.path.sep + 'outputs')].replace(os.path.sep, '/')
+                for dir in dirs:
+                    if dir.startswith('checkpoint-'):
+                        model.checkpoints.append(dir)
+                models.append(model)
+
+        response = self.__create_jsonrpc_response(msg.id, models)
         self.__send_str_to_conn(str(Message(None, response)))
 
     # Handles a train message which trains a new model

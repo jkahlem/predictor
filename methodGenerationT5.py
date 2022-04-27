@@ -29,8 +29,7 @@ class MethodGenerationModel(model.Model):
         model_options = self.options.model_options
         args = T5Args(cache_dir=self.cache_dir_name(), output_dir=self.outputs_dir_name(), num_train_epochs=1,
             dataloader_num_workers=num_workers(),
-            save_steps=num_save_steps(),
-            use_multiprocessed_decoding=False)
+            save_steps=num_save_steps())
 
         if model_options.num_of_epochs > 0:
             args.num_train_epochs = model_options.num_of_epochs

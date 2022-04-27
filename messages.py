@@ -323,3 +323,14 @@ class GetCheckpointsMessage:
 
     def __repr__(self) -> str:
         return "GetCheckpoints message..."
+
+class GetModelsMessage:
+    def __init__(self, msg: dict) -> None:
+        self.model_type = msg['params']['modelType']
+        self.id = msg['id']
+
+    def __str__(self) -> str:
+        return "GetCheckpoints message..."
+
+    def __repr__(self) -> str:
+        return "GetCheckpoints message..."
