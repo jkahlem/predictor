@@ -29,6 +29,16 @@ def get_model_config() -> Tuple[str, str]:
 def is_test_mode() -> bool:
     return False
 
+# Defines, how many workers can be used for dataloading. Increasing the number will make the dataloading step faster
+# but requires more cpu performance and memory according to the dataset size
+def num_workers() -> int:
+    return 0
+
+# Defines, on how many steps a checkpoint should be saved. Decreasing this number will save checkpoints more
+# frequently, but will also require more free hdd space.
+def num_save_steps() -> int:
+    return 3000
+
 # returns true if CUDA is available
 def is_cuda_available() -> bool:
     global use_cuda

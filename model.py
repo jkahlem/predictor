@@ -76,6 +76,7 @@ class ModelHolder():
         self.model_state = ModelState.NONE
         self.model = model
         self.model_identifier = ''
+        self.checkpoint = ''
         self.options = Options()
         self.mutex = threading.Lock()
         self.prediction_cache = dict()
@@ -223,6 +224,7 @@ class ModelHolder():
 
         self.model.set_options(options)
         self.model_identifier = options.identifier
+        self.checkpoint = options.checkpoint
 
         self.mutex.release()
 

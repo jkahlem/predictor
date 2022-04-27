@@ -4,7 +4,7 @@ from methods import Method, MethodContext, MethodValues, Parameter
 from simpletransformers.t5 import T5Model, T5Args
 import model
 import pandas as pd
-from config import is_cuda_available
+from config import is_cuda_available, num_save_steps, num_workers
 from os.path import exists
 import re
 
@@ -27,7 +27,10 @@ class MethodGenerationModel(model.Model):
 
     def __t5Args(self) -> T5Args:
         model_options = self.options.model_options
-        args = T5Args(cache_dir=self.cache_dir_name(), output_dir=self.outputs_dir_name(), num_train_epochs=1, save_steps=5000)
+        args = T5Args(cache_dir=self.cache_dir_name(), output_dir=self.outputs_dir_name(), num_train_epochs=1,
+            dataloader_num_workers=num_workers(),
+            save_steps=num_save_steps(),
+            use_multiprocessed_decoding=False)
 
         if model_options.num_of_epochs > 0:
             args.num_train_epochs = model_options.num_of_epochs

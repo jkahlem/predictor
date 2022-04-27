@@ -4,7 +4,7 @@ from methods import Method, MethodContext, MethodValues, Parameter
 from simpletransformers.seq2seq import Seq2SeqModel, Seq2SeqArgs
 import model
 import pandas as pd
-from config import is_cuda_available
+from config import is_cuda_available, num_save_steps, num_workers
 from os.path import exists
 import re
 from modelConsts import *
@@ -25,8 +25,8 @@ class MethodGenerationModelBart(model.Model):
     def __seq2seq_args(self) -> Seq2SeqArgs:
         model_options = self.options.model_options
         args = Seq2SeqArgs(cache_dir=self.cache_dir_name(), output_dir=self.outputs_dir_name(), num_train_epochs=1,
-            dataloader_num_workers=1,
-            save_steps=2500)
+            dataloader_num_workers=num_workers(),
+            save_steps=num_save_steps())
 
         if model_options.num_of_epochs > 0:
             args.num_train_epochs = model_options.num_of_epochs

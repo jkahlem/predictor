@@ -81,7 +81,7 @@ class ConnectionHandler:
         for file in os.listdir(directory):
             if file.startswith('checkpoint'):
                 checkpoints.append(file)
-        response = self.__create_jsonrpc_response(msg.id, dict(checkpoints = checkpoints))
+        response = self.__create_jsonrpc_response(msg.id, checkpoints)
         self.__send_str_to_conn(str(Message(None, response)))
 
     # Handles a train message which trains a new model
@@ -178,7 +178,7 @@ def get_model(options: Options) -> ModelHolder:
     global prediction_models, prediction_model_lock
     prediction_model_lock.acquire()
 
-    if options.target_model in prediction_models and is_different_model_identifier(prediction_models[options.target_model], options.identifier):
+    if options.target_model in prediction_models and is_different_model_identifier(prediction_models[options.target_model], options.identifier, options.checkpoint):
         # TODO: Unload the model
         del prediction_models[options.target_model]
 
@@ -201,8 +201,8 @@ def get_model(options: Options) -> ModelHolder:
     prediction_model_lock.release()
     return prediction_models[options.target_model]
 
-def is_different_model_identifier(model: ModelHolder, identifier: str) -> bool:
-    return model.model_identifier != identifier
+def is_different_model_identifier(model: ModelHolder, identifier: str, checkpoint: str) -> bool:
+    return model.model_identifier != identifier or model.checkpoint != checkpoint
 
 # Startup script for the server
 if __name__ == '__main__':
