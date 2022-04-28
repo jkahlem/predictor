@@ -4,7 +4,7 @@ from methods import Method, MethodContext, MethodValues, Parameter
 from simpletransformers.seq2seq import Seq2SeqModel, Seq2SeqArgs
 import model
 import pandas as pd
-from config import is_cuda_available, num_save_steps, num_workers
+from config import is_cuda_available, multiprocessed_decoding, num_save_steps, num_workers
 from os.path import exists
 import re
 from modelConsts import *
@@ -26,7 +26,8 @@ class MethodGenerationModelBart(model.Model):
         model_options = self.options.model_options
         args = Seq2SeqArgs(cache_dir=self.cache_dir_name(), output_dir=self.outputs_dir_name(), num_train_epochs=1,
             dataloader_num_workers=num_workers(),
-            save_steps=num_save_steps())
+            save_steps=num_save_steps(),
+            use_multiprocessed_decoding=multiprocessed_decoding())
 
         if model_options.num_of_epochs > 0:
             args.num_train_epochs = model_options.num_of_epochs
@@ -89,7 +90,10 @@ class MethodGenerationModelBart(model.Model):
             if last_epoch is not None:
                 outputs_dir = last_epoch
 
-        self.model = Seq2SeqModel(encoder_decoder_type="bart", encoder_decoder_name=outputs_dir, args=self.__seq2seq_args(), use_cuda=is_cuda_available())
+        args = self.__seq2seq_args()
+        if for_continuation:
+            args.overwrite_output_dir = True
+        self.model = Seq2SeqModel(encoder_decoder_type="bart", encoder_decoder_name=outputs_dir, args=args, use_cuda=is_cuda_available())
 
     # Trains the model using the given training set
     def train_model(self, training_set: str) -> None:

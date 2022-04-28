@@ -37,7 +37,10 @@ def num_workers() -> int:
 # Defines, on how many steps a checkpoint should be saved. Decreasing this number will save checkpoints more
 # frequently, but will also require more free hdd space.
 def num_save_steps() -> int:
-    return 3000
+    return 8000
+
+def multiprocessed_decoding() -> bool:
+    return False
 
 # returns true if CUDA is available
 def is_cuda_available() -> bool:

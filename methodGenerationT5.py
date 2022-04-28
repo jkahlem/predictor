@@ -5,7 +5,7 @@ from methods import Method, MethodContext, MethodValues, Parameter
 from simpletransformers.t5 import T5Model, T5Args
 import model
 import pandas as pd
-from config import is_cuda_available, num_save_steps, num_workers
+from config import is_cuda_available, multiprocessed_decoding, num_save_steps, num_workers
 from os.path import exists
 import re
 
@@ -30,7 +30,8 @@ class MethodGenerationModel(model.Model):
         model_options = self.options.model_options
         args = T5Args(cache_dir=self.cache_dir_name(), output_dir=self.outputs_dir_name(), num_train_epochs=1,
             dataloader_num_workers=num_workers(),
-            save_steps=num_save_steps())
+            save_steps=num_save_steps(),
+            use_multiprocessed_decoding=multiprocessed_decoding())
 
         if model_options.num_of_epochs > 0:
             args.num_train_epochs = model_options.num_of_epochs
@@ -101,7 +102,10 @@ class MethodGenerationModel(model.Model):
             if last_epoch is not None:
                 outputs_dir = last_epoch
 
-        self.model = T5Model('t5', outputs_dir, args=self.__t5Args(), use_cuda=is_cuda_available())
+        args = self.__t5Args()
+        if for_continuation:
+            args.overwrite_output_dir = True
+        self.model = T5Model('t5', outputs_dir, args=args, use_cuda=is_cuda_available())
 
     # Trains the model using the given training set
     def train_model(self, training_set: str) -> None:
