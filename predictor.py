@@ -63,7 +63,10 @@ class ConnectionHandler:
     # Handles a train message which trains a new model
     def __handle_train_message(self, msg: TrainMessage) -> None:
         model = get_model(msg.options)
-        model.create_new_model()
+        if msg.continue_training and model.exists():
+            model.load_model(True)
+        else:
+            model.create_new_model()
         model.train_model(msg.training_data)
 
         response = self.__create_jsonrpc_response(msg.id, '')

@@ -263,10 +263,12 @@ class Options:
 class TrainMessage:
     training_data: list[Method]
     options: Options
+    continue_training: bool
 
     def __init__(self, msg: dict):
         self.training_data = [Method(data) for data in msg['params']['trainData']]
         self.options = Options(msg['params']['options'])
+        self.continue_training = msg['params']['continueTraining']
         self.id = msg['id']
 
     def __str__(self) -> str:

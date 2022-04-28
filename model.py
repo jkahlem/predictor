@@ -24,7 +24,7 @@ class Model:
         pass
 
     # Loads an already created/trained classification model
-    def load_model(self) -> None:
+    def load_model(self, for_continuation: bool = False) -> None:
         pass
 
     # Trains the model using the given training set
@@ -126,7 +126,7 @@ class ModelHolder():
         self.model_state = ModelState.INITIALIZED
 
     # Loads an already created/trained model
-    def load_model(self) -> None:
+    def load_model(self, for_continuation: bool = False) -> None:
         if is_test_mode():
             # Do nothing in test mode
             return
@@ -136,7 +136,7 @@ class ModelHolder():
             self.mutex.release()
             return
 
-        self.model.load_model()
+        self.model.load_model(for_continuation)
         self.model_state = ModelState.INITIALIZED
     
         self.mutex.release()
@@ -251,3 +251,13 @@ class ModelHolder():
 
         self.mutex.release()
         return e
+
+def get_last_epoch_path(outputs_dir: str) -> str:
+    last_epoch = '0'
+    for filename in os.listdir(outputs_dir):
+        if '-epoch-' in filename:
+            if int(last_epoch.split('-')[-1]) < int(filename.split('-')[-1]):
+                last_epoch = filename
+    if last_epoch != '0':
+        return outputs_dir + ('/' if not outputs_dir.endswith('/') else '') + last_epoch
+    return None

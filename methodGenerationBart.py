@@ -41,25 +41,25 @@ class MethodGenerationModelBart(model.Model):
         if model_options.num_return_sequences > 1:
             args.num_return_sequences = model_options.num_return_sequences
             args.do_sample = True
-        
+
         if model_options.num_beams is not None and model_options.num_beams > 1:
             args.num_beams = model_options.num_beams
-        
+
         if model_options.top_k is not None:
             args.top_k = model_options.top_k
             args.do_sample = True
-        
+
         if model_options.top_p is not None:
             args.top_p = model_options.top_p
             args.do_sample = True
-        
+
         if model_options.length_penalty is not None:
             args.length_penalty = model_options.length_penalty
-        
+
         self.__set_adam_settings_to_args(model_options.adam, args)
 
         return args
-    
+
     def __set_adam_settings_to_args(self, adam: Adam, args: Seq2SeqArgs):
         if adam.eps is not None:
             args.adam_epsilon = adam.eps
@@ -82,8 +82,14 @@ class MethodGenerationModelBart(model.Model):
         self.model.decoder_tokenizer.add_tokens([TypeSeparatorToken, ReturnSeparatorToken, ParameterSeparatorToken, ArrayToken])
 
     # Loads an already created/trained classification model
-    def load_model(self) -> None:
-        self.model = Seq2SeqModel(encoder_decoder_type="bart", encoder_decoder_name=self.outputs_dir_name(), args=self.__seq2seq_args(), use_cuda=is_cuda_available())
+    def load_model(self, for_continuation: bool = False) -> None:
+        outputs_dir = self.outputs_dir_name()
+        if for_continuation:
+            last_epoch = model.get_last_epoch_path(outputs_dir)
+            if last_epoch is not None:
+                outputs_dir = last_epoch
+
+        self.model = Seq2SeqModel(encoder_decoder_type="bart", encoder_decoder_name=outputs_dir, args=self.__seq2seq_args(), use_cuda=is_cuda_available())
 
     # Trains the model using the given training set
     def train_model(self, training_set: str) -> None:

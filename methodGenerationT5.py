@@ -1,3 +1,4 @@
+import os
 from filewrapper import FileWrapper
 from messages import Adafactor, Options
 from methods import Method, MethodContext, MethodValues, Parameter
@@ -85,7 +86,6 @@ class MethodGenerationModel(model.Model):
     # initializes a new model
     def init_new_model(self) -> None:
         self.__print_model_initialization()
-        #used_model_type, used_model = get_model_config()
         self.model = T5Model('t5',
             self.options.model_options.model_name,
             args=self.__t5Args(),
@@ -94,8 +94,14 @@ class MethodGenerationModel(model.Model):
         self.model.model.resize_token_embeddings(len(self.model.tokenizer))
 
     # Loads an already created/trained classification model
-    def load_model(self) -> None:
-        self.model = T5Model('t5', self.outputs_dir_name(), args=self.__t5Args(), use_cuda=is_cuda_available())
+    def load_model(self, for_continuation: bool = False) -> None:
+        outputs_dir = self.outputs_dir_name()
+        if for_continuation:
+            last_epoch = model.get_last_epoch_path(outputs_dir)
+            if last_epoch is not None:
+                outputs_dir = last_epoch
+
+        self.model = T5Model('t5', outputs_dir, args=self.__t5Args(), use_cuda=is_cuda_available())
 
     # Trains the model using the given training set
     def train_model(self, training_set: str) -> None:
@@ -161,7 +167,6 @@ class MethodGenerationModel(model.Model):
                     parameter_name = p[0 if order.parameter_name < order.parameter_type else 1]
                     parameter_type = p[0 if order.parameter_name > order.parameter_type else 1]
 
-                parameter_type = parameter_type.strip()
                 value.add_parameter(parameter_name.replace('.', '').strip(), parameter_type.replace('.', '').strip())
 
     def __is_parameter_list_empty(self, parlist: str) -> bool:
