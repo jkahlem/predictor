@@ -1,0 +1,6 @@
+pandas==1.2.4
+torch==1.8.1 --find-links https://donwload.pytorch.org/whl/torch_stable.html
+torchvision==0.9.1 --find-links https://donwload.pytorch.org/whl/torch_stable.html
+torchaudio==0.8.1 --find-links https://donwload.pytorch.org/whl/torch_stable.html
+simpletransformers==0.61.4
+scikit_learn==0.24.2
