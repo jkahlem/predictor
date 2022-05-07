@@ -103,16 +103,14 @@ class ConnectionHandler:
             raise Exception('Unsupported model type: ' + str(msg.model_type))
 
         models = list()
-        for root, dirs, files in os.walk(output_dir):
+        for root, dirs, _ in os.walk(output_dir):
             if root.endswith(os.path.sep + 'outputs'):
                 model = Model()
                 model.model_name = root[len(output_dir):-len(os.path.sep + 'outputs')].replace(os.path.sep, '/')
-                for file in files:
-                    if file == SentenceFormattingOptionsFile:
-                        with open(root + '/' + file) as json_file:
-                            options_raw = json.load(json_file)
-                            model.sentence_formatting_options = SentenceFormattingOptions(options_raw)
-                            print(model.sentence_formatting_options)
+                if os.path.exists(os.path.dirname(root) + "/" + SentenceFormattingOptionsFile):
+                    with open(os.path.dirname(root) + "/" + SentenceFormattingOptionsFile) as json_file:
+                        options_raw = json.load(json_file)
+                        model.sentence_formatting_options = SentenceFormattingOptions(options_raw)
                 for dir in dirs:
                     if dir.startswith('checkpoint-'):
                         model.checkpoints.append(dir)
@@ -140,7 +138,6 @@ class ConnectionHandler:
             eval["f1Score"] = result["f1"]
         if "mcc" in result:
             eval["mcc"] = result['mcc']
-        print(result)
         
         msg = self.__create_jsonrpc_response(id, eval)
         
@@ -151,6 +148,8 @@ class ConnectionHandler:
         model = get_model(msg.options)
         model.load_model()
 
+        for prediction in msg.prediction_data:
+            print(prediction.methodName + ' (' + '.'.join(prediction.className) + ') ' + prediction.is_static)
         prediction = model.predict(msg.prediction_data)
         if prediction is None:
             self.__send_error_msg(msg.id, JsonRpcErrorCodes.InternalError, "Internal error")

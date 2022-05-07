@@ -9,6 +9,7 @@ from os.path import exists
 import re
 from modelConsts import *
 import json
+import os
 
 class MethodGenerationModelBart(model.Model):
     options: Options
@@ -86,11 +87,12 @@ class MethodGenerationModelBart(model.Model):
 
     def save_sentence_formatting_options(self) -> None:
         if self.options.sentence_formatting_options is not None:
+            os.makedirs(os.path.dirname(self.sentence_formatting_options_path()), exist_ok=True)
             with open(self.sentence_formatting_options_path(), 'w') as file:
                 json.dump(self.options.sentence_formatting_options, file)
 
     def sentence_formatting_options_path(self) -> str:
-        return self.outputs_dir_name() + "/" + SentenceFormattingOptionsFile
+        return self.__parent_dir() + SentenceFormattingOptionsFile
 
     # Loads an already created/trained classification model
     def load_model(self, for_continuation: bool = False) -> None:
