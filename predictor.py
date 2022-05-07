@@ -147,18 +147,16 @@ class ConnectionHandler:
             eval["f1Score"] = result["f1"]
         if "mcc" in result:
             eval["mcc"] = result['mcc']
-        
+
         msg = self.__create_jsonrpc_response(id, eval)
-        
+
         self.__send_str_to_conn(str(Message(None, msg)))
-    
+
     # Handles a predict message which makes predictions to the given method names
     def __handle_predict_message(self, msg: PredictMessage) -> None:
         model = get_model(msg.options)
         model.load_model()
 
-        for prediction in msg.prediction_data:
-            print(prediction.methodName + ' (' + '.'.join(prediction.className) + ') ' + str(prediction.is_static))
         prediction = model.predict(msg.prediction_data)
         if prediction is None:
             self.__send_error_msg(msg.id, JsonRpcErrorCodes.InternalError, "Internal error")
