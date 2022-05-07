@@ -1,5 +1,5 @@
 from filewrapper import FileWrapper
-from messages import Adafactor, Adam, Options
+from messages import Adam, Options
 from methods import Method, MethodContext, MethodValues, Parameter
 from simpletransformers.seq2seq import Seq2SeqModel, Seq2SeqArgs
 import model
@@ -90,10 +90,10 @@ class MethodGenerationModelBart(model.Model):
             if last_epoch is not None:
                 outputs_dir = last_epoch
 
-        args = self.__seq2seq_args()
         if for_continuation:
-            args.overwrite_output_dir = True
-        self.model = Seq2SeqModel(encoder_decoder_type="bart", encoder_decoder_name=outputs_dir, args=args, use_cuda=is_cuda_available())
+            self.model = Seq2SeqModel(encoder_decoder_type="bart", encoder_decoder_name=outputs_dir, args=dict(overwrite_output_dir = True), use_cuda=is_cuda_available())
+        else:
+            self.model = Seq2SeqModel(encoder_decoder_type="bart", encoder_decoder_name=outputs_dir, use_cuda=is_cuda_available())
 
     # Trains the model using the given training set
     def train_model(self, training_set: str) -> None:
@@ -122,8 +122,6 @@ class MethodGenerationModelBart(model.Model):
 
             # iterate through the predicted sequences.
             for _, parlist in enumerate(generated_parameters):
-                if len(predictions) < 50:
-                    print(parlist)
                 value = MethodValues()
                 sentences = parlist.strip().split(ReturnSeparatorToken)
                 parameter_list, return_type = '', ''

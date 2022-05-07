@@ -208,7 +208,6 @@ def get_model(options: Options) -> ModelHolder:
     prediction_model_lock.acquire()
 
     if options.target_model in prediction_models and is_different_model_identifier(prediction_models[options.target_model], options.identifier, options.checkpoint):
-        # TODO: Unload the model
         del prediction_models[options.target_model]
 
     if not options.target_model in prediction_models:

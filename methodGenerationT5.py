@@ -102,10 +102,10 @@ class MethodGenerationModel(model.Model):
             if last_epoch is not None:
                 outputs_dir = last_epoch
 
-        args = self.__t5Args()
         if for_continuation:
-            args.overwrite_output_dir = True
-        self.model = T5Model('t5', outputs_dir, args=args, use_cuda=is_cuda_available())
+            T5Model('t5', outputs_dir, args=dict(overwrite_output_dir = True), use_cuda=is_cuda_available())
+        else:
+            self.model = T5Model('t5', outputs_dir, use_cuda=is_cuda_available())
 
     # Trains the model using the given training set
     def train_model(self, training_set: str) -> None:
