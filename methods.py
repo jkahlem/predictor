@@ -110,6 +110,8 @@ class Model:
     model_name: str
     checkpoints: list[str]
     sentence_formatting_options: SentenceFormattingOptions
+    model_type: str
+
     def __init__(self) -> None:
         self.checkpoints = list()
         self.sentence_formatting_options = SentenceFormattingOptions()
@@ -137,6 +139,7 @@ class MethodEncoder(json.JSONEncoder):
                     'typeName': obj.sentence_formatting_options.type_name,
                 })
             return dict({'modelName': obj.model_name,
+                'modelType': obj.model_type,
                 'checkpoints': obj.checkpoints,
                 'sentenceFormattingOptions': sentence_formatting_options})
         return json.JSONEncoder.default(self, obj)

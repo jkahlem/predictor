@@ -107,10 +107,13 @@ class ConnectionHandler:
             if root.endswith(os.path.sep + 'outputs'):
                 model = Model()
                 model.model_name = root[len(output_dir):-len(os.path.sep + 'outputs')].replace(os.path.sep, '/')
-                if os.path.exists(os.path.dirname(root) + "/" + SentenceFormattingOptionsFile):
-                    with open(os.path.dirname(root) + "/" + SentenceFormattingOptionsFile) as json_file:
-                        options_raw = json.load(json_file)
-                        model.sentence_formatting_options = SentenceFormattingOptions(options_raw)
+
+                sentence_formatting_options = self.__get_json_as_dict_from_file(os.path.dirname(root) + "/" + SentenceFormattingOptionsFile)
+                model.sentence_formatting_options = SentenceFormattingOptions(sentence_formatting_options)
+
+                model_config = self.__get_json_as_dict_from_file(root + "/config.json")
+                if 'model_type' in model_config:
+                    model.model_type = model_config['model_type']
                 for dir in dirs:
                     if dir.startswith('checkpoint-'):
                         model.checkpoints.append(dir)
@@ -118,6 +121,12 @@ class ConnectionHandler:
 
         response = self.__create_jsonrpc_response(msg.id, models)
         self.__send_str_to_conn(str(Message(None, response)))
+
+    def __get_json_as_dict_from_file(self, filepath: str) -> dict:
+        if os.path.exists(filepath):
+            with open(filepath) as json_file:
+                return json.load(json_file)
+        return dict()
 
     # Handles a train message which trains a new model
     def __handle_evaluate_message(self, msg: EvaluateMessage) -> None:
@@ -149,7 +158,7 @@ class ConnectionHandler:
         model.load_model()
 
         for prediction in msg.prediction_data:
-            print(prediction.methodName + ' (' + '.'.join(prediction.className) + ') ' + prediction.is_static)
+            print(prediction.methodName + ' (' + '.'.join(prediction.className) + ') ' + str(prediction.is_static))
         prediction = model.predict(msg.prediction_data)
         if prediction is None:
             self.__send_error_msg(msg.id, JsonRpcErrorCodes.InternalError, "Internal error")
