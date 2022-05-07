@@ -8,8 +8,9 @@ import pandas as pd
 from config import is_cuda_available, multiprocessed_decoding, num_save_steps, num_workers
 from os.path import exists
 import re
+import json
 
-from modelConsts import ArrayToken, EmbeddedClassSeparator, EmbeddedParameterSeparator, EmbeddedReturnSeparator, EmbeddedTypeSeparator, ParameterSeparatorToken, ReturnSeparatorToken, TypeSeparatorToken
+from modelConsts import ArrayToken, EmbeddedClassSeparator, EmbeddedParameterSeparator, EmbeddedReturnSeparator, EmbeddedTypeSeparator, ParameterSeparatorToken, ReturnSeparatorToken, SentenceFormattingOptionsFile, TypeSeparatorToken
 
 GenerateParametersTask = 'generate parameters'
 
@@ -93,6 +94,15 @@ class MethodGenerationModel(model.Model):
             use_cuda=is_cuda_available())
         self.model.tokenizer.add_tokens([TypeSeparatorToken, ReturnSeparatorToken, ParameterSeparatorToken, ArrayToken])
         self.model.model.resize_token_embeddings(len(self.model.tokenizer))
+        self.save_sentence_formatting_options()
+
+    def save_sentence_formatting_options(self) -> None:
+        if self.options.sentence_formatting_options is not None:
+            with open(self.sentence_formatting_options_path(), 'w') as file:
+                json.dump(self.options.sentence_formatting_options, file)
+
+    def sentence_formatting_options_path(self) -> str:
+        return self.outputs_dir_name() + "/" + SentenceFormattingOptionsFile
 
     # Loads an already created/trained classification model
     def load_model(self, for_continuation: bool = False) -> None:

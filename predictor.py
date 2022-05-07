@@ -3,13 +3,15 @@ import logging
 import errno
 import os
 import threading
+import json
+
 from methodGenerationT5 import MethodGenerationModel
 from methodGenerationBart import MethodGenerationModelBart
-
-from messages import ExistsMessage, GetCheckpointsMessage, GetModelsMessage, Message, EvaluateMessage, Options, PredictMessage, TrainMessage, parse_message_from_fd, SupportedModels
+from messages import ExistsMessage, GetCheckpointsMessage, GetModelsMessage, Message, EvaluateMessage, Options, PredictMessage, SentenceFormattingOptions, TrainMessage, parse_message_from_fd, SupportedModels
 from config import get_port, get_script_dir, is_cuda_available, load_config
 from methods import Model
 from model import ModelHolder
+from modelConsts import SentenceFormattingOptionsFile
 from returnTypesPredictionModel import ReturnTypesPredictionModel
 from jsonrpcErrorCodes import JsonRpcErrorCodes
 
@@ -101,10 +103,16 @@ class ConnectionHandler:
             raise Exception('Unsupported model type: ' + str(msg.model_type))
 
         models = list()
-        for root, dirs, _ in os.walk(output_dir):
+        for root, dirs, files in os.walk(output_dir):
             if root.endswith(os.path.sep + 'outputs'):
                 model = Model()
                 model.model_name = root[len(output_dir):-len(os.path.sep + 'outputs')].replace(os.path.sep, '/')
+                for file in files:
+                    if file == SentenceFormattingOptionsFile:
+                        with open(root + '/' + file) as json_file:
+                            options_raw = json.load(json_file)
+                            model.sentence_formatting_options = SentenceFormattingOptions(options_raw)
+                            print(model.sentence_formatting_options)
                 for dir in dirs:
                     if dir.startswith('checkpoint-'):
                         model.checkpoints.append(dir)
@@ -120,7 +128,7 @@ class ConnectionHandler:
 
         result = model.eval_model(msg.evaluation_data)
         self.__send_evaluation_msg(msg.id, result)
-    
+
     # Sends an evaluation object as response to a train message
     def __send_evaluation_msg(self, id, result: dict) -> None:
         eval = dict(accScore=None, evalLoss=None, f1Score=None, mcc=None)

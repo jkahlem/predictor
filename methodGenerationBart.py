@@ -8,6 +8,7 @@ from config import is_cuda_available, multiprocessed_decoding, num_save_steps, n
 from os.path import exists
 import re
 from modelConsts import *
+import json
 
 class MethodGenerationModelBart(model.Model):
     options: Options
@@ -81,6 +82,15 @@ class MethodGenerationModelBart(model.Model):
         self.model.encoder_tokenizer.add_tokens([TypeSeparatorToken, ReturnSeparatorToken, ParameterSeparatorToken, ArrayToken])
         self.model.model.resize_token_embeddings(len(self.model.encoder_tokenizer))
         self.model.decoder_tokenizer.add_tokens([TypeSeparatorToken, ReturnSeparatorToken, ParameterSeparatorToken, ArrayToken])
+        self.save_sentence_formatting_options()
+
+    def save_sentence_formatting_options(self) -> None:
+        if self.options.sentence_formatting_options is not None:
+            with open(self.sentence_formatting_options_path(), 'w') as file:
+                json.dump(self.options.sentence_formatting_options, file)
+
+    def sentence_formatting_options_path(self) -> str:
+        return self.outputs_dir_name() + "/" + SentenceFormattingOptionsFile
 
     # Loads an already created/trained classification model
     def load_model(self, for_continuation: bool = False) -> None:

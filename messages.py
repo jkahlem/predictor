@@ -2,7 +2,7 @@ import json
 from enum import Enum
 from typing import Tuple
 
-from methods import Method, MethodContext, MethodEncoder
+from methods import Method, MethodContext, MethodEncoder, SentenceFormattingOptions
 
 class SupportedModels(str, Enum):
     ReturnTypesPrediction = "ReturnTypesPrediction"
@@ -236,6 +236,7 @@ class Options:
     identifier: str
     retrain: bool
     model_options: ModelOptions
+    sentence_formatting_options: SentenceFormattingOptions
     checkpoint: str
 
     def __init__(self, options: dict = dict()):
@@ -253,6 +254,8 @@ class Options:
             self.model_options = ModelOptions(options['modelOptions'])
         if 'checkpoint' in options:
             self.checkpoint = options['checkpoint']
+        if 'sentenceFormattingOptions' in options:
+            self.sentence_formatting_options = options['sentenceFormattingOptions']
 
     def __str__(self) -> str:
         return "Options..."
